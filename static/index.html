@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 - Self Service PKI System</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-color: #333;
+            --light-bg: #f5f6fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        footer {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: 2rem;
+        }
+
+        .copyright {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>CertM3 Self Service PKI System</h1>
+            <p>Secure Certificate Management Made Simple</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="main-content">
+            <div class="card">
+                <h2>Certificate Management</h2>
+                <p>Create, manage, and monitor your certificates in one place.</p>
+                <a href="/app/certificates" class="btn">Manage Certificates</a>
+            </div>
+
+            <div class="card">
+                <h2>User Administration</h2>
+                <p>Manage user accounts and access controls.</p>
+                <a href="/app/users" class="btn">Manage Users</a>
+            </div>
+
+            <div class="card">
+                <h2>System Administration</h2>
+                <p>Advanced system configuration and monitoring.</p>
+                <a href="/admin" class="btn">Admin Panel</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p class="copyright">
+                &copy; 2024 CertM3. All rights reserved. | 
+                <a href="/app/about" style="color: white;">About</a> | 
+                <a href="/app/contact" style="color: white;">Contact</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html> 

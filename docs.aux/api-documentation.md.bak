@@ -1,0 +1,390 @@
+# CertM3 API Documentation
+
+## Overview
+The CertM3 API is a self-service PKI application that allows users to manage their digital certificates and user accounts. It provides endpoints for user management, certificate management, request management, and group management.
+
+## Base Information
+- Base URL: `/api`
+- Authentication: JWT-based (to be implemented)
+- Content Type: `application/json`
+
+## Data Integrity Rules
+- Users and certificates are never deleted, only deactivated or revoked
+- Email addresses must be unique across all users
+- Usernames must be unique across all users
+- Certificate fingerprints must be unique
+- Users must belong to at least one group
+- The "users" group cannot be deleted or modified
+- Users cannot be removed from the "users" group
+
+## Default Group Behavior
+- A default "users" group is created automatically
+- All new users are automatically added to the "users" group
+- Users cannot be removed from the "users" group
+
+1. User email addresses and usernames must be unique
+2. Certificate fingerprints must be unique
+3. Certificate status must be one of: 'absent', 'present', 'active', 'revoked'
+4. Certificate dates (not_before, not_after) must be valid timestamps
+5. Users are never deleted, only deactivated (status = 'inactive')
+6. Certificates are never deleted, only revoked (status = 'revoked')
+7. When a user is deactivated, their certificates are automatically revoked
+8. When a user is deactivated, their group memberships are preserved for audit purp
+oses
+9. When a group is deleted, all user memberships in that group are automatically de
+leted (CASCADE)
+10. Request status must be one of: 'pending', 'completed', 'cancelled'
+11. User status must be one of: 'active', 'inactive'
+12. Group names must be unique
+
+
+## User Management API
+
+### Create User
+- **POST** `/api/users`
+- **Description**: Create a new user
+- **Request Body**:
+  ```json
+  {
+    "username": "string",
+    "email": "string"
+  }
+  ```
+- **Response**: User object with status set to "active"
+
+### Get Users
+- **GET** `/api/users`
+- **Description**: Get all users
+- **Query Parameters**:
+  - `status`: Filter by status ("active" or "inactive")
+- **Response**: Array of user objects
+
+### Get User
+- **GET** `/api/users/{id}`
+- **Description**: Get a specific user
+- **Response**: User object with groups
+
+### Deactivate User
+- **PATCH** `/api/users/{id}/deactivate`
+- **Description**: Deactivate a user (soft delete)
+- **Request Body**:
+  ```json
+  {
+    "deactivatedBy": "string"
+  }
+  ```
+- **Response**: 204 No Content
+- **Note**: Automatically revokes all active certificates
+
+### Update User
+- **PATCH** `/api/users/{id}`
+- **Description**: Update a user
+- **Request Body**: Partial user object
+- **Response**: 204 No Content
+
+## Certificate Management API
+
+### Create Certificate
+- **POST** `/api/certificates`
+- **Description**: Create a new certificate
+- **Request Body**:
+  ```json
+  {
+    "codeVersion": "string",
+    "username": "string",
+    "commonName": "string",
+    "email": "string",
+    "fingerprint": "string",
+    "notBefore": "string",
+    "notAfter": "string",
+    "userId": "string"
+  }
+  ```
+- **Response**: Certificate object with status set to "active"
+
+### Get Certificates
+- **GET** `/api/certificates`
+- **Description**: Get all certificates
+- **Query Parameters**:
+  - `status`: Filter by status ("active" or "revoked")
+  - `username`: Filter by username
+  - `limit`: Number of records to return
+  - `skip`: Number of records to skip
+- **Response**: Object containing:
+  ```json
+  {
+    "data": [Certificate],
+    "total": "number",
+    "limit": "number",
+    "skip": "number"
+  }
+  ```
+
+### Get Certificate
+- **GET** `/api/certificates/{id}`
+- **Description**: Get a specific certificate
+- **Response**: Certificate object with user
+
+### Revoke Certificate
+- **PATCH** `/api/certificates/{id}/revoke`
+- **Description**: Revoke a certificate (soft delete)
+- **Request Body**:
+  ```json
+  {
+    "revokedBy": "string",
+    "revocationReason": "string"
+  }
+  ```
+- **Response**: 204 No Content
+
+### Update Certificate
+- **PATCH** `/api/certificates/{id}`
+- **Description**: Update a certificate
+- **Request Body**: Partial certificate object
+- **Response**: 204 No Content
+
+## Request Management API
+
+### Create Request
+- **POST** `/api/requests`
+- **Description**: Create a new certificate request
+- **Request Body**:
+  ```json
+  {
+    "username": "string",
+    "displayName": "string",
+    "email": "string"
+  }
+  ```
+- **Response**: Request object with status set to "pending"
+
+### Get Requests
+- **GET** `/api/requests`
+- **Description**: Get all requests
+- **Query Parameters**:
+  - `status`: Filter by status ("pending", "approved", or "rejected")
+- **Response**: Array of request objects
+
+### Get Request
+- **GET** `/api/requests/{id}`
+- **Description**: Get a specific request
+- **Response**: Request object
+
+### Update Request
+- **PATCH** `/api/requests/{id}`
+- **Description**: Update a request
+- **Request Body**: Partial request object
+- **Response**: 204 No Content
+
+## Group Management API
+
+### Create Group
+- **POST** `/api/groups`
+- **Description**: Create a new group
+- **Request Body**:
+  ```json
+  {
+    "name": "string",
+    "displayName": "string",
+    "description": "string"
+  }
+  ```
+- **Response**: Group object with status set to "active"
+
+### Get Groups
+- **GET** `/api/groups`
+- **Description**: Get all groups
+- **Response**: Array of group objects
+
+### Get Group
+- **GET** `/api/groups/{id}`
+- **Description**: Get a specific group
+- **Response**: Group object with users
+
+### Update Group
+- **PATCH** `/api/groups/{id}`
+- **Description**: Update a group
+- **Request Body**: Partial group object
+- **Response**: 204 No Content
+- **Note**: Cannot modify the "users" group
+
+### Delete Group
+- **PATCH** `/api/groups/{id}/delete`
+- **Description**: Delete a group (soft delete)
+- **Request Body**:
+  ```json
+  {
+    "deletedBy": "string"
+  }
+  ```
+- **Response**: 204 No Content
+- **Note**: Cannot delete the "users" group
+
+### Get Group Members
+- **GET** `/api/groups/{name}/members`
+- **Description**: Get all members of a group
+- **Query Parameters**:
+  - `limit`: Number of records to return
+  - `skip`: Number of records to skip
+  - `filter`: Filter by username
+  - `sort`: Sort field
+- **Response**: Object containing:
+  ```json
+  {
+    "data": [User],
+    "total": "number",
+    "limit": "number",
+    "skip": "number"
+  }
+  ```
+
+### Add Group Members
+- **POST** `/api/groups/{name}/members`
+- **Description**: Add users to a group
+- **Request Body**:
+  ```json
+  {
+    "userIds": ["string"]
+  }
+  ```
+- **Response**: 204 No Content
+- **Note**: Users are automatically added to the "users" group
+
+### Remove Group Members
+- **DELETE** `/api/groups/{name}/members`
+- **Description**: Remove users from a group
+- **Request Body**:
+  ```json
+  {
+    "userIds": ["string"]
+  }
+  ```
+- **Response**: 204 No Content
+- **Note**: Cannot remove users from the "users" group
+
+## Data Models
+
+### User
+```typescript
+{
+  id: string;              // UUID
+  username: string;        // Unique
+  email: string;          // Unique
+  status: 'active' | 'inactive';
+  createdAt?: Date;
+  createdBy?: string;
+  updatedAt?: Date;
+  updatedBy?: string;
+  groups?: Group[];       // Relations
+}
+```
+
+### Certificate
+```typescript
+{
+  serialNumber: string;    // UUID
+  codeVersion: string;
+  username: string;
+  commonName: string;
+  email: string;
+  fingerprint: string;     // Unique
+  notBefore: Date;
+  notAfter: Date;
+  status: 'active' | 'revoked';
+  revokedAt?: Date;
+  revokedBy?: string;
+  revocationReason?: string;
+  userId: string;         // Foreign key to User
+  createdAt?: Date;
+  createdBy?: string;
+  updatedAt?: Date;
+  updatedBy?: string;
+  user?: User;           // Relations
+}
+```
+
+### Request
+```typescript
+{
+  id: string;             // UUID
+  username: string;
+  displayName: string;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected';
+  challenge?: string;
+  createdAt?: Date;
+  createdBy?: string;
+  updatedAt?: Date;
+  updatedBy?: string;
+}
+```
+
+### Group
+```typescript
+{
+  name: string;           // Primary key
+  displayName: string;
+  description?: string;
+  status: 'active' | 'inactive';
+  createdAt?: Date;
+  createdBy?: string;
+  updatedAt?: Date;
+  updatedBy?: string;
+  users?: User[];        // Relations
+}
+```
+
+### UserGroup
+```typescript
+{
+  userId: string;         // Composite primary key
+  groupName: string;      // Composite primary key
+  createdAt?: Date;
+  createdBy?: string;
+  updatedAt?: Date;
+  updatedBy?: string;
+  user?: User;           // Relations
+  group?: Group;         // Relations
+}
+```
+
+## Error Responses
+
+All endpoints may return the following error responses:
+
+- `400 Bad Request` - Invalid input data
+- `401 Unauthorized` - Authentication required
+- `403 Forbidden` - Insufficient permissions
+- `404 Not Found` - Resource not found
+- `409 Conflict` - Resource already exists
+- `500 Internal Server Error` - Server error
+
+## Security Considerations
+
+1. **Authentication**
+   - JWT-based authentication to be implemented
+   - Token required in Authorization header
+   - Format: `Authorization: Bearer <token>`
+
+2. **Authorization**
+   - Role-based access control
+   - Group-based access control via certificate SAN fields
+   - Required group: "CertM3_Admin" for administrative access
+   - Roles managed via comma-separated string
+   - Common roles: 'admin', 'user'
+
+3. **Rate Limiting**
+   - To be implemented
+   - Limits per IP and per user
+   - Exponential backoff for request validation
+
+## Notes
+
+1. All timestamps are in ISO 8601 format with timezone information
+2. UUIDs are used for user IDs and request IDs
+3. Certificate serial numbers follow X.509 conventions
+4. All endpoints return JSON responses
+5. Pagination to be implemented for search endpoints
+6. Request validation uses email challenge-response mechanism
+7. The "users" group is a special default group that all users are automatically added to
+8. Group memberships are reflected in certificate SAN fields

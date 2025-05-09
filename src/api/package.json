@@ -1,0 +1,81 @@
+{
+  "name": "CertM3 API",
+  "version": "1.0.0",
+  "description": "Loopback 4 API for CertM3",
+  "keywords": [
+    "loopback-application",
+    "loopback"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": "18 || 20 || 22"
+  },
+  "scripts": {
+    "build": "lb-tsc",
+    "build:watch": "lb-tsc --watch",
+    "lint": "npm run eslint && npm run prettier:check",
+    "lint:fix": "npm run eslint:fix && npm run prettier:fix",
+    "prettier:cli": "lb-prettier \"**/*.ts\" \"**/*.js\"",
+    "prettier:check": "npm run prettier:cli -- -l",
+    "prettier:fix": "npm run prettier:cli -- --write",
+    "eslint": "lb-eslint --report-unused-disable-directives .",
+    "eslint:fix": "npm run eslint -- --fix",
+    "pretest": "npm run rebuild",
+    "test": "mocha --require ts-node/register 'tests/**/*.ts'",
+    "test:watch": "mocha --require ts-node/register --watch 'tests/**/*.ts'",
+    "posttest": "npm run lint",
+    "test:dev": "lb-mocha --allow-console-logs dist/__tests__/**/*.js && npm run posttest",
+    "docker:build": "docker build -t certm3-api .",
+    "docker:run": "docker run -p 3000:3000 -d certm3-api",
+    "premigrate": "npm run build",
+    "migrate": "node ./dist/migrate",
+    "preopenapi-spec": "npm run build",
+    "openapi-spec": "node ./dist/openapi-spec",
+    "prestart": "npm run build",
+    "start": "node .",
+    "start:dev": "nodemon --watch src --watch package.json --watch tsconfig.json --exec npm run start",
+    "clean": "lb-clean dist *.tsbuildinfo .eslintcache",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "author": "ogt11.com/llc",
+  "license": "MPL-2.0",
+  "files": [
+    "README.md",
+    "dist",
+    "src",
+    "!*/__tests__"
+  ],
+  "dependencies": {
+    "@loopback/boot": "^5.0.0",
+    "@loopback/core": "^4.0.0",
+    "@loopback/repository": "^5.0.0",
+    "@loopback/rest": "^12.0.0",
+    "@loopback/rest-explorer": "^7.0.12",
+    "@loopback/service-proxy": "^5.0.0",
+    "loopback-connector-postgresql": "^7.2.0",
+    "pg": "^8.15.6",
+    "pg-hstore": "^2.3.4",
+    "tslib": "^2.0.0",
+    "typeorm": "^0.3.23"
+  },
+  "devDependencies": {
+    "@loopback/build": "^9.0.0",
+    "@loopback/eslint-config": "^15.0.5",
+    "@loopback/testlab": "^5.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.19.100",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "eslint": "^8.57.1",
+    "mocha": "^10.2.0",
+    "prettier": "^2.8.8",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.1",
+    "typescript": "~4.9.5"
+  }
+}

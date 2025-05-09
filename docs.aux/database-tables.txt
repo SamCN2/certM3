@@ -1,0 +1,134 @@
+certm3=> \d+ request
+                                                            Table "public.request"
+      Column      |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id               | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ username         | text                     |           | not null |                    | extended |             |              | 
+ displayname      | text                     |           | not null |                    | extended |             |              | 
+ email            | text                     |           | not null |                    | extended |             |              | 
+ status           | text                     |           |          | 'pending'::text    | extended |             |              | 
+ createdat        | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ challenge        | text                     |           |          |                    | extended |             |              | 
+ last_modified_at | timestamp with time zone |           |          |                    | plain    |             |              | 
+ last_modified_by | text                     |           |          |                    | extended |             |              | 
+Indexes:
+    "request_pkey" PRIMARY KEY, btree (id)
+Access method: heap
+
+certm3=> \d+ users
+                                                            Table "public.users"
+      Column       |           Type           | Collation | Nullable |     Default     | Storage  | Compression | Stats target | Description 
+-------------------+--------------------------+-----------+----------+-----------------+----------+-------------+--------------+-------------
+ username          | text                     |           | not null |                 | extended |             |              | 
+ display_name      | text                     |           | not null |                 | extended |             |              | 
+ responsible_party | text                     |           | not null |                 | extended |             |              | 
+ created_at        | timestamp with time zone |           | not null |                 | plain    |             |              | 
+ last_modified_at  | timestamp with time zone |           |          |                 | plain    |             |              | 
+ last_modified_by  | text                     |           |          |                 | extended |             |              | 
+ email             | text                     |           |          |                 | extended |             |              | 
+ status            | text                     |           | not null | 'pending'::text | extended |             |              | 
+ id                | uuid                     |           | not null |                 | plain    |             |              | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "users_username_key" UNIQUE CONSTRAINT, btree (username)
+Referenced by:
+    TABLE "user_groups" CONSTRAINT "user_groups_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+Access method: heap
+
+certm3=> \d+ groups
+                                                        Table "public.groups"
+      Column       |           Type           | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
+-------------------+--------------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+ name              | text                     |           | not null |         | extended |             |              | 
+ display_name      | text                     |           | not null |         | extended |             |              | 
+ responsible_party | text                     |           | not null |         | extended |             |              | 
+ description       | text                     |           |          |         | extended |             |              | 
+ created_at        | timestamp with time zone |           | not null |         | plain    |             |              | 
+ last_modified_at  | timestamp with time zone |           |          |         | plain    |             |              | 
+ last_modified_by  | text                     |           |          |         | extended |             |              | 
+Indexes:
+    "groups_pkey" PRIMARY KEY, btree (name)
+    "uniqueGroupName" UNIQUE, btree (name)
+Referenced by:
+    TABLE "user_groups" CONSTRAINT "user_groups_group_name_fkey" FOREIGN KEY (group_name) REFERENCES groups(name) ON DELETE CASCADE
+Access method: heap
+
+certm3=> \d+ user_groups
+      Column       |           Type           | Collation | Nullable |     Default     | Storage  | Compression | Stats target | Description 
+-------------------+--------------------------+-----------+----------+-----------------+----------+-------------+--------------+-------------
+ username          | text                     |           | not null |                 | extended |             |              | 
+ display_name      | text                     |           | not null |                 | extended |             |              | 
+ responsible_party | text                     |           | not null |                 | extended |             |              | 
+ created_at        | timestamp with time zone |           | not null |                 | plain    |             |              | 
+ last_modified_at  | timestamp with time zone |           |          |                 | plain    |             |              | 
+ last_modified_by  | text                     |           |          |                 | extended |             |              | 
+ email             | text                     |           |          |                 | extended |             |              | 
+ status            | text                     |           | not null | 'pending'::text | extended |             |              | 
+ id                | uuid                     |           | not null |                 | plain    |             |              | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "users_username_key" UNIQUE CONSTRAINT, btree (username)
+Referenced by:
+    TABLE "user_groups" CONSTRAINT "user_groups_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+Access method: heap
+
+
+certm3=> \d+ certificate
+                                                            Table "public.certificate"
+        Column        |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+----------------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ code_version         | text                     |           | not null |                   | extended |             |              | 
+ username             | text                     |           | not null |                   | extended |             |              | 
+ commonname           | text                     |           |          |                   | extended |             |              | 
+ email                | text                     |           |          |                   | extended |             |              | 
+ fingerprint          | text                     |           | not null |                   | extended |             |              | 
+ not_before           | timestamp with time zone |           | not null |                   | plain    |             |              | 
+ not_after            | timestamp with time zone |           | not null |                   | plain    |             |              | 
+ revokedat            | timestamp with time zone |           |          |                   | plain    |             |              | 
+ roles                | text                     |           |          |                   | extended |             |              | 
+ revocation_reason    | text                     |           |          |                   | extended |             |              | 
+ userid               | uuid                     |           | not null |                   | plain    |             |              | 
+ status               | text                     |           | not null | 'absent'::text    | extended |             |              | 
+ createdat            | timestamp with time zone |           | not null | CURRENT_TIMESTAMP | plain    |             |              | 
+ is_first_certificate | boolean                  |           | not null | false             | plain    |             |              | 
+ serial_number        | uuid                     |           | not null |                   | plain    |             |              | 
+Indexes:
+    "certificate_fingerprint_key" UNIQUE CONSTRAINT, btree (fingerprint)
+    "certificate_status_idx" btree (status)
+    "certificate_userid_idx" btree (userid)
+    "unique_serial_number" UNIQUE CONSTRAINT, btree (serial_number)
+Check constraints:
+    "certificate_status_check" CHECK (status = ANY (ARRAY['absent'::text, 'present'::text, 'active'::text, 'revoked'::text]))
+Access method: heap
+
+## here are loopback4 postgres datasource declarations
+
+### certm3
+
+import {inject, lifeCycleObserver, LifeCycleObserver} from '@loopback/core';
+import {juggler} from '@loopback/repository';
+
+const config = {
+  name: 'postgres',
+  connector: 'postgresql',
+  host: '/var/run/postgresql',
+  user: 'samcn2',
+  database: 'certm3',
+  ssl: false,
+  schema: 
+};
+
+@lifeCycleObserver('datasource')
+export class PostgresDataSource extends juggler.DataSource
+  implements LifeCycleObserver {
+  static dataSourceName = 'postgres';
+  static readonly defaultConfig = config;
+
+  constructor(
+    @inject('datasources.config.postgres', {optional: true})
+    dsConfig: object = config,
+  ) {
+    super(dsConfig);
+  }
+} 
+

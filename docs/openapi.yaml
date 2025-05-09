@@ -1,0 +1,877 @@
+openapi: 3.0.0
+info:
+  title: CertM3 API
+  description: |
+    API for managing certificates, users, groups, and certificate requests.
+    This API provides endpoints for certificate lifecycle management, user management,
+    group management, and certificate request processing.
+  version: 1.0.0
+  contact:
+    name: CertM3 Team
+    url: https://urp.ogt11.com
+
+servers:
+  - url: https://urp.ogt11.com/api
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - username
+        - email
+        - displayName
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the user
+        username:
+          type: string
+          description: Unique username
+        email:
+          type: string
+          format: email
+          description: User's email address
+        displayName:
+          type: string
+          description: User's display name
+        status:
+          type: string
+          enum: [active, inactive]
+          description: User's current status
+        createdAt:
+          type: string
+          format: date-time
+          description: When the user was created
+        createdBy:
+          type: string
+          description: ID of the user who created this user
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the user was last updated
+        updatedBy:
+          type: string
+          description: ID of the user who last updated this user
+
+    Certificate:
+      type: object
+      required:
+        - serialNumber
+        - codeVersion
+        - username
+        - userId
+        - commonName
+        - email
+        - fingerprint
+        - notBefore
+        - notAfter
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        serialNumber:
+          type: string
+          format: uuid
+          description: Unique serial number for the certificate
+        codeVersion:
+          type: string
+          description: Version of the code that generated the certificate
+        username:
+          type: string
+          description: Username associated with the certificate
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who owns the certificate
+        commonName:
+          type: string
+          description: Common name in the certificate
+        email:
+          type: string
+          format: email
+          description: Email address in the certificate
+        fingerprint:
+          type: string
+          description: Certificate fingerprint
+        notBefore:
+          type: string
+          format: date-time
+          description: Certificate validity start date
+        notAfter:
+          type: string
+          format: date-time
+          description: Certificate validity end date
+        status:
+          type: string
+          enum: [active, revoked]
+          description: Certificate status
+        revokedAt:
+          type: string
+          format: date-time
+          description: When the certificate was revoked
+        revokedBy:
+          type: string
+          description: ID of the user who revoked the certificate
+        revocationReason:
+          type: string
+          description: Reason for revocation
+        createdAt:
+          type: string
+          format: date-time
+          description: When the certificate was created
+        createdBy:
+          type: string
+          description: ID of the user who created the certificate
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the certificate was last updated
+        updatedBy:
+          type: string
+          description: ID of the user who last updated the certificate
+
+    Group:
+      type: object
+      required:
+        - name
+        - displayName
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        name:
+          type: string
+          description: Unique name of the group
+        displayName:
+          type: string
+          description: Display name of the group
+        description:
+          type: string
+          description: Group description
+        status:
+          type: string
+          enum: [active, inactive]
+          description: Group status
+        createdAt:
+          type: string
+          format: date-time
+          description: When the group was created
+        createdBy:
+          type: string
+          description: ID of the user who created the group
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the group was last updated
+        updatedBy:
+          type: string
+          description: ID of the user who last updated the group
+
+    Request:
+      type: object
+      required:
+        - username
+        - displayName
+        - email
+        - status
+        - challenge
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the request
+        username:
+          type: string
+          description: Requested username
+        displayName:
+          type: string
+          description: Requested display name
+        email:
+          type: string
+          format: email
+          description: Requested email address
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Request status
+        challenge:
+          type: string
+          description: Challenge token for validation
+        createdAt:
+          type: string
+          format: date-time
+          description: When the request was created
+        createdBy:
+          type: string
+          description: ID of the user who created the request
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the request was last updated
+        updatedBy:
+          type: string
+          description: ID of the user who last updated the request
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - statusCode
+            - name
+            - message
+          properties:
+            statusCode:
+              type: integer
+              description: HTTP status code
+            name:
+              type: string
+              description: Error name
+            message:
+              type: string
+              description: Error message
+
+paths:
+  /users:
+    post:
+      summary: Create a new user
+      operationId: createUser
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - displayName
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                displayName:
+                  type: string
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List users
+      operationId: listUsers
+      tags:
+        - Users
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      operationId: getUserById
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}/deactivate:
+    post:
+      summary: Deactivate user
+      description: Deactivates a user by setting their status to inactive
+      operationId: deactivateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '204':
+          description: User deactivated successfully
+        '400':
+          description: User is already inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /certificates:
+    post:
+      summary: Create a new certificate
+      operationId: createCertificate
+      tags:
+        - Certificates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - serialNumber
+                - codeVersion
+                - username
+                - userId
+                - commonName
+                - email
+                - fingerprint
+                - notBefore
+                - notAfter
+              properties:
+                serialNumber:
+                  type: string
+                  format: uuid
+                codeVersion:
+                  type: string
+                username:
+                  type: string
+                userId:
+                  type: string
+                  format: uuid
+                commonName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                fingerprint:
+                  type: string
+                notBefore:
+                  type: string
+                  format: date-time
+                notAfter:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Certificate created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '400':
+          description: Invalid certificate dates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Certificate with this fingerprint already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List certificates
+      operationId: listCertificates
+      tags:
+        - Certificates
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, revoked]
+      responses:
+        '200':
+          description: List of certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Certificate'
+
+  /certificates/{id}:
+    get:
+      summary: Get certificate by ID
+      operationId: getCertificateById
+      tags:
+        - Certificates
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Certificate found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '404':
+          description: Certificate not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update certificate
+      description: Updates a certificate's information
+      operationId: updateCertificate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Certificate ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                codeVersion:
+                  type: string
+                commonName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                notBefore:
+                  type: string
+                  format: date-time
+                notAfter:
+                  type: string
+                  format: date-time
+      responses:
+        '204':
+          description: Certificate updated successfully
+        '400':
+          description: Invalid certificate dates or certificate is revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Certificate not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /certificates/{id}/revoke:
+    post:
+      summary: Revoke certificate
+      description: Revokes a certificate with the provided reason
+      operationId: revokeCertificate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Certificate ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - revokedBy
+                - revocationReason
+              properties:
+                revokedBy:
+                  type: string
+                revocationReason:
+                  type: string
+      responses:
+        '204':
+          description: Certificate revoked successfully
+        '400':
+          description: Certificate is already revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Certificate not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /groups:
+    post:
+      summary: Create a new group
+      operationId: createGroup
+      tags:
+        - Groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - displayName
+              properties:
+                name:
+                  type: string
+                displayName:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '409':
+          description: Group with this name already exists or cannot create users group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List groups
+      operationId: listGroups
+      tags:
+        - Groups
+      responses:
+        '200':
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+
+  /groups/{id}:
+    get:
+      summary: Get group by ID
+      operationId: getGroupById
+      tags:
+        - Groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Group found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '404':
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete group
+      description: Marks a group as inactive
+      operationId: deleteGroup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Group ID
+      responses:
+        '204':
+          description: Group deleted successfully
+        '403':
+          description: Cannot delete the users group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /groups/{name}/members:
+    get:
+      summary: Get group members
+      description: Returns a list of users who are members of the specified group
+      operationId: getGroupMembers
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Group name
+      responses:
+        '200':
+          description: List of group members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '404':
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests:
+    post:
+      summary: Create a new request
+      operationId: createRequest
+      tags:
+        - Requests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - displayName
+                - email
+              properties:
+                username:
+                  type: string
+                displayName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Request created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '409':
+          description: Request with this username already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests/{id}:
+    get:
+      summary: Get request by ID
+      operationId: getRequestById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Request ID
+      responses:
+        '200':
+          description: Request found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests/search:
+    get:
+      summary: Search requests
+      operationId: searchRequests
+      tags:
+        - Requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        '200':
+          description: List of requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Request'
+
+  /requests/{id}/validate:
+    post:
+      summary: Validate request
+      description: Validates a request with the provided challenge token
+      operationId: validateRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Request ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challenge
+              properties:
+                challenge:
+                  type: string
+      responses:
+        '204':
+          description: Request validated successfully
+        '400':
+          description: Invalid request state or challenge token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /requests/{id}/cancel:
+    post:
+      summary: Cancel request
+      description: Cancels a pending request
+      operationId: cancelRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Request ID
+      responses:
+        '204':
+          description: Request cancelled successfully
+        '400':
+          description: Invalid request state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /ping:
+    get:
+      summary: Health check endpoint
+      operationId: ping
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  greeting:
+                    type: string
+                  date:
+                    type: string
+                    format: date-time
+                  url:
+                    type: string
+                  headers:
+                    type: object
+                    properties:
+                      'Content-Type':
+                        type: string
+                    additionalProperties: true 
