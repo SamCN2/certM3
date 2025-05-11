@@ -5,28 +5,72 @@ document.addEventListener('DOMContentLoaded', () => {
   const errorMessage = document.querySelector('.error.message');
   const successMessage = document.querySelector('.success.message');
 
-  // Get request ID and challenge from URL path
-  const pathParts = window.location.pathname.split('/');
-  const requestId = pathParts[2]; // /app/validate/{id}/{challenge}
-  const challenge = pathParts[3];
+  const url = new URL(window.location.href);
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  let requestId = null;
+  let challengeId = null;
 
-  // If we have both ID and challenge, auto-fill and submit
-  if (requestId && challenge) {
-    validationCodeInput.value = challenge;
-    validateButton.click();
-    return;
+  // Check for /app/validate/:requestId/challenge-:challengeId
+  if (pathParts.length >= 4 && pathParts[1] === 'validate' && pathParts[3].startsWith('challenge-')) {
+    requestId = pathParts[2];
+    challengeId = pathParts[3].replace('challenge-', '');
+  } else {
+    // Check for query params (manual entry)
+    requestId = url.searchParams.get('id');
+    challengeId = url.searchParams.get('challenge');
   }
 
-  // If we only have the ID (from request page), show the form
-  if (requestId) {
-    // Form is already visible, just wait for user to enter challenge
-    return;
-  }
+  if (requestId && challengeId) {
+    // Hide the manual form if present
+    const form = document.getElementById('validation-form');
+    if (form) form.style.display = 'none';
+    if (errorMessage) errorMessage.style.display = 'none';
+    if (successMessage) successMessage.style.display = 'none';
 
-  // If we have neither, show error
-  errorMessage.textContent = 'Invalid validation link. Please check your email for the correct link.';
-  errorMessage.style.display = 'block';
-  validateButton.disabled = true;
+    // Show a loading indicator
+    const loading = document.createElement('div');
+    loading.className = 'ui active inline loader';
+    loading.textContent = 'Validating...';
+    document.body.appendChild(loading);
+
+    // Submit validation automatically
+    fetch(`/api/requests/${requestId}/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge: challengeId })
+    })
+    .then(async (res) => {
+      loading.remove();
+      if (res.ok) {
+        // Redirect to cert-request page with params
+        window.location.href = `/app/cert-request?requestId=${requestId}&challengeId=${challengeId}`;
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (errorMessage) {
+          errorMessage.textContent = data.error || 'Validation failed.';
+          errorMessage.style.display = 'block';
+        } else {
+          alert(data.error || 'Validation failed.');
+        }
+        // Show manual form for retry
+        if (form) form.style.display = '';
+      }
+    })
+    .catch((err) => {
+      loading.remove();
+      if (errorMessage) {
+        errorMessage.textContent = err.message || 'Validation failed.';
+        errorMessage.style.display = 'block';
+      } else {
+        alert(err.message || 'Validation failed.');
+      }
+      if (form) form.style.display = '';
+    });
+  } else {
+    // Show manual form
+    const form = document.getElementById('validation-form');
+    if (form) form.style.display = '';
+  }
 
   // Handle validation button click
   validateButton.addEventListener('click', async () => {

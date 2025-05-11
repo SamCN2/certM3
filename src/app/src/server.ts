@@ -20,6 +20,7 @@ const validatePaths = () => {
     index: path.join(__dirname, '../../../static/index.html'),
     request: path.join(__dirname, 'views/request.html'),
     validate: path.join(__dirname, 'views/validate.html'),
+    certRequest: path.join(__dirname, 'views/cert-request.html'),
     
     // Critical JS files
     appJs: path.join(__dirname, '../../../static/js/app.js'),
@@ -88,9 +89,41 @@ app.get('/app/request', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'views/request.html'));
 });
 
-// Serve the validate page for /app/validate
+// Serve the validation page for validation links
+app.get('/app/validate/:requestId/challenge-:challengeId', async (req: Request, res: Response) => {
+  const { requestId, challengeId } = req.params;
+  const fullChallenge = `challenge-${challengeId}`;
+
+  try {
+    console.log(`Validating request with ID: ${requestId} and challenge ID: ${fullChallenge}`);
+    // Call the API to validate the request
+    const response = await fetch(`https://urp.ogt11.com/api/requests/${requestId}/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge: fullChallenge })
+    });
+
+    if (response.ok) {
+      // Redirect to the certificate request page if validation is successful
+      res.redirect(`/app/cert-request?requestId=${requestId}&challengeId=${challengeId}`);
+    } else {
+      // Serve the validation page if validation fails
+      res.sendFile(path.join(__dirname, 'views/validate.html'));
+    }
+  } catch (error) {
+    console.error('Error validating request:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Serve the validate page for manual validation
 app.get('/app/validate', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'views/validate.html'));
+});
+
+// Serve the certificate request page for direct access
+app.get('/app/cert-request', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, 'views/cert-request.html'));
 });
 
 // Serve the main application for other /app/* routes

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 - Validate Account</title>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Semantic UI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="ui container">
+        <header class="ui segment">
+            <h1 class="ui header">CertM3 - Validate Account</h1>
+        </header>
+
+        <main>
+            <div class="ui segment">
+                <div class="ui info message">
+                    <div class="header">Account Validation</div>
+                    <p>Please check your email for the validation link. Click the link in the email to complete your registration.</p>
+                </div>
+
+                <div class="ui form">
+                    <div class="field">
+                        <label>Validation Code</label>
+                        <div class="ui input">
+                            <input type="text" id="validation-code" placeholder="Enter the code from your email">
+                        </div>
+                    </div>
+                    <button class="ui primary button" id="validate-button">
+                        <span class="button-text">Validate Account</span>
+                        <div class="ui active inline loader" style="display: none;"></div>
+                    </button>
+                </div>
+                <div class="ui error message" style="display: none;"></div>
+                <div class="ui success message" style="display: none;"></div>
+            </div>
+        </main>
+
+        <footer class="ui segment">
+            <p>Copyright 2025 ogt11.com, llc</p>
+        </footer>
+    </div>
+
+    <!-- Semantic UI JS -->
+    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+    <!-- Application JS -->
+    <script src="/static/js/validate.js?v=1"></script>
+</body>
+</html> 

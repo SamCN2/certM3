@@ -9,7 +9,7 @@
     "build": "npm run clean && npm run build:ts && npm run build:webpack && npm run copy-assets",
     "build:ts": "tsc",
     "build:webpack": "webpack --config webpack.config.js",
-    "copy-assets": "cp -r src/css ../../static/ && cp -r src/assets ../../static/ 2>/dev/null || true && cp src/views/*.html ../../static/views/ 2>/dev/null || true && cp src/js/request.js ../../static/js/request.js && cp src/js/validate.js ../../static/js/validate.js",
+    "copy-assets": "mkdir -p ../../static/views ../../static/js ../../static/css ../../static/assets && cp -r src/css/* ../../static/css/ 2>/dev/null || true && cp -r src/assets/* ../../static/assets/ 2>/dev/null || true && cp src/views/*.html ../../static/views/ 2>/dev/null || true && cp src/js/request.js ../../static/js/request.js && cp src/js/validate.js ../../static/js/validate.js",
     "clean": "rimraf dist",
     "test": "jest",
     "test:watch": "jest --watch",
