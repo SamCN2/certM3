@@ -12,7 +12,7 @@ import {
 } from '@loopback/rest';
 import {repository} from '@loopback/repository';
 import {Request, RequestWithRelations} from '../models';
-import {RequestRepository} from '../repositories';
+import {RequestRepository, UserRepository} from '../repositories';
 import {v4 as uuidv4} from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,6 +21,8 @@ export class RequestController {
   constructor(
     @repository(RequestRepository)
     public requestRepository: RequestRepository,
+    @repository(UserRepository)
+    public userRepository: UserRepository,
   ) {}
 
   private async generateValidationEmail(request: Request): Promise<void> {
@@ -264,15 +266,20 @@ The certM3 Team
     @param.path.string('username') username: string,
   ): Promise<void> {
     console.log('Checking username:', username);
-    const existingRequest = await this.requestRepository.findOne({
-      where: {
-        username: username,
-        // Don't filter by status - check all requests
-      },
-    });
     
-    if (existingRequest) {
-      console.log('Username found:', username, 'in request with status:', existingRequest.status);
+    // Check both tables
+    const [existingRequest, existingUser] = await Promise.all([
+      this.requestRepository.findOne({
+        where: {username: username},
+      }),
+      this.userRepository.findOne({
+        where: {username: username},
+      })
+    ]);
+    
+    if (existingRequest || existingUser) {
+      console.log('Username found:', username, 
+        existingRequest ? `in request (${existingRequest.status})` : 'in users table');
       return; // Returns 200
     }
     
