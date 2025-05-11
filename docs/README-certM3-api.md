@@ -28,6 +28,36 @@ You can also run `node .` to skip the build step.
 
 Open http://127.0.0.1:3000 in your browser.
 
+## Configuration
+
+The API service uses a centralized configuration system located in `src/config.ts`. This system provides:
+
+1. Type-safe configuration through TypeScript interfaces
+2. Environment-specific settings (development/production)
+3. Centralized management of API and database settings
+
+### Configuration Management
+
+The configuration is automatically selected based on the `NODE_ENV` environment variable. Available environments:
+- `development` (default)
+- `production`
+
+To run in a specific environment:
+```bash
+# Development (default)
+npm start
+
+# Production
+NODE_ENV=production npm start
+```
+
+### Security Considerations
+
+- Configuration values are version-controlled
+- Sensitive values should be managed through secure configuration management
+- Environment variables are only used for environment selection
+- Database credentials should be managed securely in production
+
 ## Rebuild the project
 
 To incrementally build the project:

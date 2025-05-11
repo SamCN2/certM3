@@ -16,7 +16,7 @@ import {v4 as uuidv4} from 'uuid';
 const useRaw = process.argv.includes('--raw');
 
 // Service base URLs
-const API_BASE_URL = useRaw ? 'http://localhost:3000' : 'https://urp.ogt11.com/api';
+const API_BASE_URL = useRaw ? 'http://localhost:3000/api' : 'https://urp.ogt11.com/api';
 const ADMIN_BASE_URL = useRaw ? 'http://localhost:3001' : 'https://urp.ogt11.com/admin';
 const APP_BASE_URL = useRaw ? 'http://localhost:3002' : 'https://urp.ogt11.com/app';
 
@@ -175,35 +175,48 @@ const testCases: TestCase[] = [
   // API Service endpoints
   {
     name: 'API: Get user by ID',
-    method: 'GET',
-    path: '/users/123',
+    method: 'GET' as const,
+    path: '/users/01eeb5e0-dc0b-44cf-b322-c5541afb40e7',
     baseUrl: API_BASE_URL,
-    expectedStatus: 404, // Will be 404 since we don't have a real user
+    expectedStatus: 200,
+    description: 'Gets a specific user by ID'
+  },
+  {
+    name: 'API: Get non-existent user',
+    method: 'GET' as const,
+    path: '/users/00000000-0000-0000-0000-000000000000',
+    baseUrl: API_BASE_URL,
+    expectedStatus: 404,
+    description: 'Attempts to get a user that does not exist'
   },
   {
     name: 'API: Search users',
-    method: 'GET',
-    path: '/users/search',
+    method: 'GET' as const,
+    path: '/users?status=active',
     baseUrl: API_BASE_URL,
+    expectedStatus: 200,
+    description: 'Search for active users'
   },
 
   // Admin Service endpoints (placeholder for future implementation)
-  {
-    name: 'Admin: Health check',
-    method: 'GET',
-    path: '/health',
-    baseUrl: ADMIN_BASE_URL,
-    expectedStatus: 404, // Will be implemented later
-  },
-
-  // App Service endpoints (placeholder for future implementation)
-  {
-    name: 'App: Health check',
-    method: 'GET',
-    path: '/health',
-    baseUrl: APP_BASE_URL,
-    expectedStatus: 404, // Will be implemented later
-  },
+  ...(useRaw ? [] : [
+    {
+      name: 'Admin: Health check',
+      method: 'GET' as const,
+      path: '/health',
+      baseUrl: ADMIN_BASE_URL,
+      expectedStatus: 200,
+      description: 'Checks admin service health'
+    },
+    {
+      name: 'App: Health check',
+      method: 'GET' as const,
+      path: '/health',
+      baseUrl: APP_BASE_URL,
+      expectedStatus: 200,
+      description: 'Checks app service health'
+    }
+  ])
 ];
 
 async function runTests() {

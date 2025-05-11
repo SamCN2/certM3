@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- APP_TEST_8c4f0a3b-2d5e-5f9g-0b3c-6d7e8f9g0a1b -->
+    <!-- REQUEST_TEST_9d5g1b4c-3e6f-6g0h-1c4d-7e8f9g0h1b2c -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CertM3 - Certificate Management</title>
-    <!-- jQuery (must be first) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Semantic UI CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
     <!-- Custom styles -->
@@ -54,22 +54,6 @@
     <!-- Semantic UI JS -->
     <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
     <!-- Application JS -->
-    <script>
-        // Ensure jQuery is loaded before initializing the app
-        if (typeof jQuery === 'undefined') {
-            console.error('jQuery is not loaded!');
-        } else {
-            // Initialize Semantic UI
-            jQuery(document).ready(function() {
-                // Load app.js after jQuery and Semantic UI are ready
-                const script = document.createElement('script');
-                script.src = '/static/js/app.js';
-                script.onerror = function() {
-                    console.error('Failed to load app.js');
-                };
-                document.body.appendChild(script);
-            });
-        }
-    </script>
+    <script src="/static/js/app.js"></script>
 </body>
 </html> 

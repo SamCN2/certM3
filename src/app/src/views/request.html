@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- REQUEST_TEST_9d5g1b4c-3e6f-6g0h-1c4d-7e8f9g0h1b2c -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 - Request Account</title>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Semantic UI CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="ui container">
+        <header class="ui segment">
+            <h1 class="ui header">CertM3 - Request Account</h1>
+        </header>
+
+        <main>
+            <div class="ui segment">
+                <div class="ui info message">
+                    <div class="header">Before You Begin</div>
+                    <p>You'll need to provide:</p>
+                    <ul class="list">
+                        <li>A unique username</li>
+                        <li>A valid email address</li>
+                        <li>Your display name</li>
+                    </ul>
+                    <p>After submitting, you'll receive an email with a validation link.</p>
+                </div>
+
+                <form class="ui form" id="user-request-form">
+                    <div class="field">
+                        <label>Username</label>
+                        <div class="ui input">
+                            <input type="text" name="username" required 
+                                   pattern="[a-z0-9]+" 
+                                   title="Only lowercase letters and numbers allowed">
+                        </div>
+                        <div class="ui pointing label username-validation" style="display: none;"></div>
+                    </div>
+                    <div class="field">
+                        <label>Email Address</label>
+                        <div class="ui input">
+                            <input type="email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Display Name</label>
+                        <div class="ui input">
+                            <input type="text" name="displayName" required 
+                                   minlength="2" maxlength="64"
+                                   title="2-64 characters">
+                        </div>
+                    </div>
+                    <button class="ui primary button" type="submit">
+                        <span class="button-text">Request Account</span>
+                        <div class="ui active inline loader" style="display: none;"></div>
+                    </button>
+                </form>
+                <div class="ui error message" style="display: none;"></div>
+                <div class="ui success message" style="display: none;"></div>
+            </div>
+        </main>
+
+        <footer class="ui segment">
+            <p>Copyright 2025 ogt11.com, llc</p>
+        </footer>
+    </div>
+
+    <!-- Semantic UI JS -->
+    <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
+    <!-- Application JS -->
+    <script src="/static/js/request.js?v=2"></script>
+</body>
+</html> 

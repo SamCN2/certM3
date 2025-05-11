@@ -1,0 +1,45 @@
+/* Main container */
+.ui.container {
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+/* Header */
+header.ui.segment {
+    margin-bottom: 2em;
+}
+
+/* Main content */
+main .ui.segment {
+    min-height: 400px;
+}
+
+/* View transitions */
+#app-content > div {
+    display: none;
+}
+
+#app-content > div.active {
+    display: block;
+}
+
+/* Form styles */
+.ui.form .field {
+    margin-bottom: 1.5em;
+}
+
+/* Mobile optimizations */
+@media only screen and (max-width: 768px) {
+    .ui.container {
+        margin-top: 1em;
+        margin-bottom: 1em;
+    }
+
+    .ui.secondary.menu {
+        flex-wrap: wrap;
+    }
+
+    .ui.secondary.menu .item {
+        margin-bottom: 0.5em;
+    }
+} 

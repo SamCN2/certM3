@@ -17,6 +17,7 @@ import {UserRepository} from './repositories';
 import {CertificateRepository} from './repositories';
 import {RequestRepository} from './repositories';
 import {GroupRepository} from './repositories';
+import {config} from './config';
 
 export {ApplicationConfig};
 
@@ -24,7 +25,16 @@ export class Certm3ApiApplication extends BootMixin(
   ServiceMixin(RepositoryMixin(RestApplication)),
 ) {
   constructor(options: ApplicationConfig = {}) {
-    super(options);
+    // Configure base path for all routes using the config file
+    const restOptions = {
+      ...options,
+      rest: {
+        ...options.rest,
+        basePath: config.api.prefix,
+      },
+    };
+
+    super(restOptions);
 
     // Set up the custom sequence
     this.sequence(MySequence);

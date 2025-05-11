@@ -56,6 +56,46 @@ pm2 start ecosystem.config.js
 
 The API will be available at `http://localhost:3000`.
 
+## Configuration
+
+The API service uses environment-based configuration managed through `src/api/src/config.ts`. The configuration includes:
+
+- API settings (prefix, port, host)
+- Database connection details
+- Environment-specific settings
+
+### Environment Selection
+The service automatically selects the appropriate configuration based on the `NODE_ENV` environment variable:
+- `development` (default)
+- `production`
+
+Example usage:
+```bash
+# Development environment (default)
+npm start
+
+# Production environment
+NODE_ENV=production npm start
+```
+
+### Configuration Structure
+```typescript
+interface ApiConfig {
+  api: {
+    prefix: string;    // API route prefix (e.g., '/api')
+    port: number;      // Server port
+    host: string;      // Server host
+  };
+  database: {
+    host: string;      // Database host
+    port: number;      // Database port
+    database: string;  // Database name
+    username: string;  // Database username
+    password: string;  // Database password
+  };
+}
+```
+
 ## Documentation
 
 - API Documentation: Available at `/openapi.json` when the API is running

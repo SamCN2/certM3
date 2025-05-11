@@ -1,0 +1,44 @@
+module.exports = {
+  apps: [
+    {
+      name: 'certm3-api',
+      script: 'dist/application.js',
+      cwd: '/home/samcn2/src/certM3/src/api',
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3000
+      },
+      error_file: '/var/spool/certM3/logs/api-error.log',
+      out_file: '/var/spool/certM3/logs/api-out.log',
+      log_file: '/var/spool/certM3/logs/api-combined.log',
+      time: true,
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'certm3-web',
+      script: 'dist/app.js',
+      cwd: '/home/samcn2/src/certM3/src/app',
+      watch: false,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001
+      },
+      env_development: {
+        NODE_ENV: 'development',
+        PORT: 3001
+      },
+      error_file: '/var/spool/certM3/logs/web-error.log',
+      out_file: '/var/spool/certM3/logs/web-out.log',
+      log_file: '/var/spool/certM3/logs/web-combined.log',
+      time: true,
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    }
+  ]
+}; 

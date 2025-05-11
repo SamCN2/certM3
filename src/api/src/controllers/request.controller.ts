@@ -14,12 +14,58 @@ import {repository} from '@loopback/repository';
 import {Request, RequestWithRelations} from '../models';
 import {RequestRepository} from '../repositories';
 import {v4 as uuidv4} from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class RequestController {
   constructor(
     @repository(RequestRepository)
     public requestRepository: RequestRepository,
   ) {}
+
+  private async generateValidationEmail(request: Request): Promise<void> {
+    const emailDir = '/var/spool/certM3/test-emails';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${timestamp}-${request.username}-validation.txt`;
+    const filepath = path.join(emailDir, filename);
+
+    console.log('Generating validation email:');
+    console.log('- Directory:', emailDir);
+    console.log('- Filename:', filename);
+    console.log('- Full path:', filepath);
+
+    const emailContent = `
+To: ${request.email}
+Subject: Validate your certM3 account request
+
+Dear ${request.displayName},
+
+Thank you for requesting a certM3 account. To validate your account, please use one of the following methods:
+
+1. Click this link to validate automatically:
+   https://urp.ogt11.com/app/validate/${request.id}/${request.challenge}
+
+2. Or visit this page and enter your validation code:
+   https://urp.ogt11.com/app/validate/${request.id}
+   
+   Your validation code is: ${request.challenge}
+
+This validation link will expire in 24 hours.
+
+Best regards,
+The certM3 Team
+`;
+
+    try {
+      await fs.promises.writeFile(filepath, emailContent);
+      console.log(`✓ Test email written to ${filepath}`);
+    } catch (error) {
+      console.error('Error writing test email:', error);
+      console.error('- Error details:', error.message);
+      console.error('- Error code:', error.code);
+      // Don't throw - we don't want to fail the request just because we couldn't write the test email
+    }
+  }
 
   @post('/requests', {
     responses: {
@@ -51,13 +97,19 @@ export class RequestController {
     if (existingRequest) {
       throw new HttpErrors.Conflict('Request with this username already exists');
     }
-    return this.requestRepository.create({
+
+    const newRequest = await this.requestRepository.create({
       ...request,
       status: 'pending',
       challenge: `challenge-${uuidv4()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    // Generate test email
+    await this.generateValidationEmail(newRequest);
+
+    return newRequest;
   }
 
   @get('/requests/{id}', {
@@ -196,5 +248,35 @@ export class RequestController {
       status: 'rejected',
       updatedAt: new Date(),
     });
+  }
+
+  @get('/request/check-username/{username}', {
+    responses: {
+      '200': {
+        description: 'Username exists',
+      },
+      '404': {
+        description: 'Username is available',
+      },
+    },
+  })
+  async checkUsername(
+    @param.path.string('username') username: string,
+  ): Promise<void> {
+    console.log('Checking username:', username);
+    const existingRequest = await this.requestRepository.findOne({
+      where: {
+        username: username,
+        // Don't filter by status - check all requests
+      },
+    });
+    
+    if (existingRequest) {
+      console.log('Username found:', username, 'in request with status:', existingRequest.status);
+      return; // Returns 200
+    }
+    
+    console.log('Username not found:', username);
+    throw new HttpErrors.NotFound('Username is available');
   }
 } 
