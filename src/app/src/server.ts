@@ -402,11 +402,16 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
 
     cert.setSubject(parsedCsr.subject.attributes);
     cert.setIssuer(caCert.subject.attributes);
+
+    // Check if publicKey exists on CSR and assign
+    if (!parsedCsr.publicKey) {
+      throw new Error('CSR does not contain a public key.');
+    }
     cert.publicKey = parsedCsr.publicKey;
 
     // Add extensions (customize as needed)
     const csrEmail = parsedCsr.subject.getField('E')?.value;
-    const extensions = [
+    const extensions: forge.pki.Certificate.Extension[] = [
       { name: 'basicConstraints', cA: false },
       { name: 'keyUsage', keyCertSign: false, digitalSignature: true, nonRepudiation: true, keyEncipherment: true, dataEncipherment: true }
     ];
