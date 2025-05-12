@@ -77,11 +77,27 @@ async function generateCA() {
   const keyPem = forge.pki.privateKeyToPem(keys.privateKey); // Unencrypted private key
 
   // 6. Write to files
+  // Attempt to remove existing files first to avoid permission issues on overwrite
+  try {
+    if (fs.existsSync(caConfig.output.certPath)) {
+      console.log(`Removing existing CA certificate at ${caConfig.output.certPath}...`);
+      fs.unlinkSync(caConfig.output.certPath);
+    }
+  } catch (err) {
+    console.warn(`Warning: Could not remove existing CA certificate: ${err.message}. Attempting to write anyway.`);
+  }
   fs.writeFileSync(caConfig.output.certPath, certPem);
   console.log(`CA certificate saved to: ${caConfig.output.certPath}`);
   fs.chmodSync(caConfig.output.certPath, 0o444);
 
-
+  try {
+    if (fs.existsSync(caConfig.output.keyPath)) {
+      console.log(`Removing existing CA private key at ${caConfig.output.keyPath}...`);
+      fs.unlinkSync(caConfig.output.keyPath);
+    }
+  } catch (err) {
+    console.warn(`Warning: Could not remove existing CA private key: ${err.message}. Attempting to write anyway.`);
+  }
   fs.writeFileSync(caConfig.output.keyPath, keyPem);
   console.log(`CA private key saved to: ${caConfig.output.keyPath}`);
   fs.chmodSync(caConfig.output.keyPath, 0o400);
