@@ -28,9 +28,9 @@ module.exports = {
       PORT: 3001,
       API_URL: "https://urp.ogt11.com/api", // Or your local API URL
       // --- Add CA Configuration ---
-      CA_CERT_PATH: "/path/to/your/ca.crt.pem", // <-- REPLACE THIS PATH
-      CA_KEY_PATH: "/path/to/your/ca.key.pem",   // <-- REPLACE THIS PATH
-      // CA_KEY_PASSPHRASE: "your_ca_key_passphrase" // Uncomment and set if your key is encrypted
+      CA_CERT_PATH: "/home/samcn2/src/certM3/CA/certs/ca-cert.pem", 
+      CA_KEY_PATH: "/home/samcn2/src/certM3/CA/private/ca-key.pem",
+      // CA_KEY_PASSPHRASE: "your_ca_key_passphrase" // Uncomment if key encrypted
       // --- End CA Configuration ---
     },
     error_file: '/var/spool/certM3/logs/app-error.log',
