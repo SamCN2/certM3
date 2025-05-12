@@ -77,26 +77,43 @@ async function generateCA() {
   const keyPem = forge.pki.privateKeyToPem(keys.privateKey); // Unencrypted private key
 
   // 6. Write to files
-  // Attempt to remove existing files first to avoid permission issues on overwrite
-  try {
-    if (fs.existsSync(caConfig.output.certPath)) {
-      console.log(`Removing existing CA certificate at ${caConfig.output.certPath}...`);
-      fs.unlinkSync(caConfig.output.certPath);
+  // Function to get a timestamp string for backups
+  const getTimestamp = () => {
+    const now = new Date();
+    const YYYY = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const DD = String(now.getDate()).padStart(2, '0');
+    const HH = String(now.getHours()).padStart(2, '0');
+    const MIN = String(now.getMinutes()).padStart(2, '0');
+    const SS = String(now.getSeconds()).padStart(2, '0');
+    return `${YYYY}${MM}${DD}${HH}${MIN}${SS}`;
+  };
+
+  // Handle CA certificate file
+  if (fs.existsSync(caConfig.output.certPath)) {
+    const backupCertPath = `${caConfig.output.certPath}.${getTimestamp()}`;
+    try {
+      console.log(`Backing up existing CA certificate from ${caConfig.output.certPath} to ${backupCertPath}...`);
+      fs.renameSync(caConfig.output.certPath, backupCertPath);
+      console.log(`Backed up to ${backupCertPath}`);
+    } catch (err) {
+      console.warn(`Warning: Could not backup existing CA certificate: ${err.message}. Attempting to overwrite.`);
     }
-  } catch (err) {
-    console.warn(`Warning: Could not remove existing CA certificate: ${err.message}. Attempting to write anyway.`);
   }
   fs.writeFileSync(caConfig.output.certPath, certPem);
   console.log(`CA certificate saved to: ${caConfig.output.certPath}`);
   fs.chmodSync(caConfig.output.certPath, 0o444);
 
-  try {
-    if (fs.existsSync(caConfig.output.keyPath)) {
-      console.log(`Removing existing CA private key at ${caConfig.output.keyPath}...`);
-      fs.unlinkSync(caConfig.output.keyPath);
+  // Handle CA private key file
+  if (fs.existsSync(caConfig.output.keyPath)) {
+    const backupKeyPath = `${caConfig.output.keyPath}.${getTimestamp()}`; // Regenerate timestamp for key if needed, though usually close
+    try {
+      console.log(`Backing up existing CA private key from ${caConfig.output.keyPath} to ${backupKeyPath}...`);
+      fs.renameSync(caConfig.output.keyPath, backupKeyPath);
+      console.log(`Backed up to ${backupKeyPath}`);
+    } catch (err) {
+      console.warn(`Warning: Could not backup existing CA private key: ${err.message}. Attempting to overwrite.`);
     }
-  } catch (err) {
-    console.warn(`Warning: Could not remove existing CA private key: ${err.message}. Attempting to write anyway.`);
   }
   fs.writeFileSync(caConfig.output.keyPath, keyPem);
   console.log(`CA private key saved to: ${caConfig.output.keyPath}`);
