@@ -4,6 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { generateValidationToken, verifyValidationToken } from './utils/jwt';
 import axios from 'axios';
+import forge from 'node-forge'; // <-- Add forge
 
 // Validation functions
 function isValidEmail(email: string): boolean {
@@ -67,6 +68,28 @@ const validatePaths = () => {
 
 // Run validation before starting the server
 validatePaths();
+
+// --- CA Configuration Loading ---
+const CA_CERT_PATH = process.env.CA_CERT_PATH;
+const CA_KEY_PATH = process.env.CA_KEY_PATH;
+const CA_KEY_PASSPHRASE = process.env.CA_KEY_PASSPHRASE || null; // Optional passphrase
+
+if (!CA_CERT_PATH || !CA_KEY_PATH) {
+  console.error('FATAL: CA_CERT_PATH and CA_KEY_PATH environment variables must be set.');
+  process.exit(1);
+}
+
+let caCertPem: string;
+let caKeyPem: string;
+try {
+  caCertPem = fs.readFileSync(CA_CERT_PATH, 'utf8');
+  caKeyPem = fs.readFileSync(CA_KEY_PATH, 'utf8');
+  console.log('CA certificate and key loaded successfully from paths specified in environment variables.');
+} catch (err) {
+  console.error('FATAL: Failed to load CA certificate or key from paths:', CA_CERT_PATH, CA_KEY_PATH, err);
+  process.exit(1); // Exit if CA cannot be loaded
+}
+// --- End CA Configuration Loading ---
 
 // Middleware
 app.use(cors());
@@ -311,9 +334,15 @@ app.get('/app/certificate', (req: Request, res: Response) => {
   }
 });
 
+// Helper function to generate a serial number (example)
+function generateSerialNumber(): string {
+  // Generate a random serial number (hex string) - adjust length as needed
+  return forge.util.bytesToHex(forge.random.getBytesSync(16));
+}
+
 // Handle certificate signing
 app.post('/app/cert-sign', async (req: Request, res: Response) => {
-  const { requestId, csr, password } = req.body;
+  const { requestId, csr, password } = req.body; // password from request is not used in this signing logic
   const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
@@ -333,51 +362,80 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Get the request details
-    const requestResponse = await axios.get(`${API_BASE_URL}/requests/${requestId}`);
-    const request = requestResponse.data;
-
-    // 3. Get user details to ensure they exist
-    const userResponse = await axios.get(`${API_BASE_URL}/users?username=${request.username}`);
-    if (!userResponse.data || userResponse.data.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+    // 2. Parse the CSR
+    let parsedCsr;
+    try {
+      parsedCsr = forge.pki.certificationRequestFromPem(csr);
+      // Optional: Verify CSR signature if needed
+      // if (!parsedCsr.verify()) {
+      //   throw new Error('CSR signature verification failed');
+      // }
+    } catch (e: any) {
+      console.error('Failed to parse CSR:', e);
+      return res.status(400).json({ success: false, error: `Invalid CSR format: ${e.message}` });
     }
-    const user = userResponse.data[0];
 
-    // 4. Submit CSR for signing
-    const certResponse = await axios.post(`${API_BASE_URL}/certificates`, {
-      csr,
-      userId: user.id,
-      username: request.username,
-      email: request.email,
-      displayName: request.displayName,
-      status: 'active'
-    });
+    // 3. Load CA certificate and key
+    const caCert = forge.pki.certificateFromPem(caCertPem);
+    let caKey: forge.pki.PrivateKey;
+    try {
+      if (CA_KEY_PASSPHRASE) {
+        caKey = forge.pki.decryptRsaPrivateKey(caKeyPem, CA_KEY_PASSPHRASE);
+      } else {
+        caKey = forge.pki.privateKeyFromPem(caKeyPem);
+      }
+      if (!caKey) {
+        // This case should ideally be caught by privateKeyFromPem throwing or returning null
+        throw new Error('Could not load CA private key. Ensure key is valid and passphrase (if any) is correct.');
+      }
+    } catch (e: any) {
+      console.error('Error loading/decrypting CA private key:', e);
+      return res.status(500).json({ success: false, error: `Internal server error: Failed to load CA key: ${e.message}` });
+    }
 
-    // 5. Return the signed certificate
+    // 4. Create and sign the certificate
+    const cert = forge.pki.createCertificate();
+    cert.serialNumber = generateSerialNumber();
+    cert.validity.notBefore = new Date();
+    cert.validity.notAfter = new Date();
+    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1); // 1 year validity
+
+    cert.setSubject(parsedCsr.subject.attributes);
+    cert.setIssuer(caCert.subject.attributes);
+    cert.publicKey = parsedCsr.publicKey;
+
+    // Add extensions (customize as needed)
+    const csrEmail = parsedCsr.subject.getField('E')?.value;
+    const extensions = [
+      { name: 'basicConstraints', cA: false },
+      { name: 'keyUsage', keyCertSign: false, digitalSignature: true, nonRepudiation: true, keyEncipherment: true, dataEncipherment: true }
+    ];
+    if (csrEmail) {
+        extensions.push({ name: 'subjectAltName', altNames: [{ type: 6 /* rfc822Name */, value: csrEmail }] });
+    }
+    cert.setExtensions(extensions);
+
+    // Sign the certificate
+    cert.sign(caKey, forge.md.sha256.create());
+
+    // 5. Convert the signed certificate to PEM format
+    const signedCertPem = forge.pki.certificateToPem(cert);
+
+    // 6. Return the signed certificate
     res.json({
       success: true,
       data: {
-        certificate: certResponse.data.certificate,
-        privateKey: certResponse.data.privateKey,
-        password: password // Return the password for PKCS#12 bundle creation
+        certificate: signedCertPem,
+        caCertificate: caCertPem // Optionally include CA cert for chain building
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing certificate signing:', error);
-    if (axios.isAxiosError(error)) {
-      res.status(error.response?.status || 500).json({
-        success: false,
-        error: error.response?.data?.message || 'Failed to sign certificate'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error'
+    // More specific error reporting
+    res.status(500).json({
+      success: false,
+      error: `Failed to sign certificate: ${error.message || 'An unknown error occurred'}`
       });
     }
   }
