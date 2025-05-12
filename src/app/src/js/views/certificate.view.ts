@@ -1,134 +1,129 @@
-import { BaseView } from './base.view';
-import { ApiService } from '../services/api.service';
+import { AppService } from '../services/app-service';
+import { generateKeyPair, generateCSR } from '../utils/crypto';
 
-export class CertificateView extends BaseView {
-  private apiService: ApiService;
+export class CertificateView {
+  private appService: AppService;
+  private form: HTMLFormElement | null;
+  private passwordInput: HTMLInputElement | null;
+  private errorMessage: HTMLElement | null;
+  private validationMessage: HTMLElement | null;
 
   constructor() {
-    super('certificate');
-    this.apiService = ApiService.getInstance();
-    this.render();
+    this.appService = AppService.getInstance();
+    this.form = document.querySelector('#certificate-form');
+    this.passwordInput = document.querySelector('input[name="password"]');
+    this.errorMessage = document.querySelector('.error.message');
+    this.validationMessage = document.querySelector('.validation.message');
+
+    this.initialize();
   }
 
-  protected render(): void {
-    const html = `
-      <div class="ui segment">
-        <h2 class="ui header">Generate Certificate</h2>
-        <form class="ui form" id="generate-certificate-form">
-          <div class="field">
-            <label>Request ID</label>
-            <input type="text" name="requestId" required>
-          </div>
-          <button class="ui primary button" type="submit">
-            <span class="button-text">Generate Certificate</span>
-            <div class="ui active inline loader" style="display: none;"></div>
-          </button>
-        </form>
-        <div class="ui error message" style="display: none;"></div>
-        <div class="ui success message" style="display: none;"></div>
-        <div class="ui segment certificate-result" style="display: none;">
-          <h3 class="ui header">Certificate Details</h3>
-          <div class="ui list">
-            <div class="item">
-              <div class="header">Certificate ID</div>
-              <div class="description certificate-id"></div>
-            </div>
-            <div class="item">
-              <div class="header">Valid Until</div>
-              <div class="description valid-until"></div>
-            </div>
-          </div>
-          <div class="ui divider"></div>
-          <button class="ui secondary button download-certificate">
-            <i class="download icon"></i> Download Certificate
-          </button>
-        </div>
-      </div>
-    `;
-    this.setContent(html);
-    this.setupEventListeners();
-  }
+  private initialize() {
+    // Check for required URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const requestId = urlParams.get('requestId');
 
-  private setupEventListeners(): void {
-    const form = this.element.querySelector('#generate-certificate-form') as HTMLFormElement;
-    form.addEventListener('submit', this.handleSubmit.bind(this));
+    if (!token || !requestId) {
+      this.showError('Missing token or requestId');
+      return;
+    }
 
-    const downloadButton = this.element.querySelector('.download-certificate') as HTMLButtonElement;
-    downloadButton.addEventListener('click', this.handleDownload.bind(this));
-  }
+    // Set up form submission
+    if (this.form) {
+      this.form.addEventListener('submit', this.handleSubmit.bind(this));
+    }
 
-  private async handleSubmit(event: Event): Promise<void> {
-    event.preventDefault();
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const requestId = formData.get('requestId') as string;
-    
-    this.setLoading(true);
-    this.hideMessages();
-    this.hideCertificateResult();
-
-    try {
-      const response = await this.apiService.generateCertificate(requestId);
-
-      if (response.success) {
-        this.showSuccess('Certificate generated successfully!');
-        this.showCertificateResult(response.data);
-        form.reset();
-      } else {
-        this.showError(response.error || 'Failed to generate certificate');
-      }
-    } catch (error) {
-      this.showError('An unexpected error occurred');
-      console.error('Error generating certificate:', error);
-    } finally {
-      this.setLoading(false);
+    // Set up password validation
+    if (this.passwordInput) {
+      this.passwordInput.addEventListener('input', this.validatePassword.bind(this));
     }
   }
 
-  private async handleDownload(): Promise<void> {
-    // TODO: Implement certificate download
-    console.log('Download certificate');
+  private validatePassword() {
+    if (!this.passwordInput || !this.validationMessage) return;
+
+    const password = this.passwordInput.value;
+    if (password.length < 8) {
+      this.validationMessage.textContent = 'Password must be at least 8 characters';
+      this.validationMessage.style.display = 'block';
+    } else {
+      this.validationMessage.style.display = 'none';
+    }
   }
 
-  private showCertificateResult(data: any): void {
-    const resultDiv = this.element.querySelector('.certificate-result') as HTMLElement;
-    const certificateId = resultDiv.querySelector('.certificate-id') as HTMLElement;
-    const validUntil = resultDiv.querySelector('.valid-until') as HTMLElement;
+  private async handleSubmit(event: Event) {
+    event.preventDefault();
+    if (!this.form || !this.passwordInput) return;
 
-    certificateId.textContent = data.certificateId;
-    validUntil.textContent = new Date(data.validUntil).toLocaleString();
-    resultDiv.style.display = 'block';
+    const password = this.passwordInput.value;
+    if (password.length < 8) {
+      this.showError('Password must be at least 8 characters');
+      return;
+    }
+
+    try {
+      // Generate key pair and CSR
+      const keyPair = await generateKeyPair();
+      const csr = await generateCSR(keyPair);
+
+      // Get requestId from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const requestId = urlParams.get('requestId');
+
+      if (!requestId) {
+        this.showError('Missing requestId');
+        return;
+      }
+
+      // Submit for signing
+      const response = await this.appService.signCertificate({
+        requestId,
+        csr,
+        password
+      });
+
+      if (response.success && response.data) {
+        // Create PKCS#12 bundle
+        const p12 = await this.createPKCS12Bundle(
+          response.data.certificate,
+          response.data.privateKey,
+          password
+        );
+
+        // Trigger download
+        this.downloadCertificate(p12, 'certificate.p12');
+      } else {
+        this.showError(response.error || 'Failed to sign certificate');
+      }
+    } catch (error) {
+      console.error('Error processing certificate:', error);
+      this.showError('Failed to process certificate');
+    }
   }
 
-  private hideCertificateResult(): void {
-    const resultDiv = this.element.querySelector('.certificate-result') as HTMLElement;
-    resultDiv.style.display = 'none';
+  private showError(message: string) {
+    if (this.errorMessage) {
+      this.errorMessage.textContent = message;
+      this.errorMessage.style.display = 'block';
+    }
   }
 
-  private setLoading(isLoading: boolean): void {
-    const button = this.element.querySelector('button[type="submit"]') as HTMLButtonElement;
-    const loader = button.querySelector('.loader') as HTMLElement;
-    const buttonText = button.querySelector('.button-text') as HTMLElement;
-    
-    button.disabled = isLoading;
-    loader.style.display = isLoading ? 'inline-block' : 'none';
-    buttonText.style.display = isLoading ? 'none' : 'inline-block';
+  private async createPKCS12Bundle(certificate: string, privateKey: string, password: string): Promise<ArrayBuffer> {
+    // This is a placeholder - in a real implementation, you would use a library like forge
+    // to create the PKCS#12 bundle
+    return new ArrayBuffer(0);
   }
 
-  private showError(message: string): void {
-    const errorMessage = this.element.querySelector('.error.message') as HTMLElement;
-    errorMessage.textContent = message;
-    errorMessage.style.display = 'block';
-  }
-
-  private showSuccess(message: string): void {
-    const successMessage = this.element.querySelector('.success.message') as HTMLElement;
-    successMessage.textContent = message;
-    successMessage.style.display = 'block';
-  }
-
-  private hideMessages(): void {
-    const messages = this.element.querySelectorAll('.message');
-    messages.forEach(msg => (msg as HTMLElement).style.display = 'none');
+  private downloadCertificate(data: ArrayBuffer, filename: string) {
+    const blob = new Blob([data], { type: 'application/x-pkcs12' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 } 
