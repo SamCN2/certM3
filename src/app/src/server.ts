@@ -376,7 +376,15 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
     }
 
     // 3. Load CA certificate and key
-    const caCert = forge.pki.certificateFromPem(caCertPem);
+    let caCert: forge.pki.Certificate;
+    try {
+      caCert = forge.pki.certificateFromPem(caCertPem);
+    } catch (e: any) {
+      console.error('FATAL: Failed to parse CA certificate PEM:', e);
+      // Provide a more specific error response
+      return res.status(500).json({ success: false, error: `Internal server error: Could not parse CA certificate: ${e.message}` });
+    }
+
     let caKey: forge.pki.PrivateKey;
     try {
       if (CA_KEY_PASSPHRASE) {
@@ -407,10 +415,8 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
     if (!parsedCsr.publicKey) {
       throw new Error('CSR does not contain a public key.');
     }
-    // Re-parse the public key from the CSR to ensure compatibility
-    const publicKeyPem = forge.pki.publicKeyToPem(parsedCsr.publicKey);
-    cert.publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
-
+    // Assign public key directly from CSR (reverting previous change)
+    cert.publicKey = parsedCsr.publicKey;
 
     // Add extensions (customize as needed)
     const csrEmail = parsedCsr.subject.getField('E')?.value;
