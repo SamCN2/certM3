@@ -1,7 +1,8 @@
 import { AppService } from '../services/app-service';
 import { generateKeyPair, generateCSR } from '../utils/crypto';
+import { BaseView } from './base.view';
 
-export class CertificateView {
+export class CertificateView extends BaseView {
   private appService: AppService;
   private form: HTMLFormElement | null;
   private passwordInput: HTMLInputElement | null;
@@ -9,16 +10,26 @@ export class CertificateView {
   private validationMessage: HTMLElement | null;
 
   constructor() {
+    super('certificate'); // Call BaseView constructor
     this.appService = AppService.getInstance();
+    // Querying elements will happen in render, after the main HTML structure is potentially in place
+    this.form = null;
+    this.passwordInput = null;
+    this.errorMessage = null;
+    this.validationMessage = null;
+    // BaseView's show() will call this.render() if we override onShow, or we call it directly.
+    // For simplicity, let's ensure render is called.
+    // If the HTML is static in index.html, this is fine.
+    // If BaseView's this.element was supposed to contain the view, this would need adjustment.
+    this.render();
+  }
+
+  protected render() { // Renamed from initialize and made protected to match BaseView's pattern
+    // Query for elements now, assuming they are in the document
     this.form = document.querySelector('#certificate-form');
     this.passwordInput = document.querySelector('input[name="password"]');
     this.errorMessage = document.querySelector('.error.message');
     this.validationMessage = document.querySelector('.validation.message');
-
-    this.initialize();
-  }
-
-  private initialize() {
     // Check for required URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
