@@ -378,9 +378,15 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
     // 3. Load CA certificate and key
     let caCert: forge.pki.Certificate;
     try {
-      caCert = forge.pki.certificateFromPem(caCertPem);
+      // Ensure the PEM string is clean and log more details on error
+      const trimmedCaCertPem = caCertPem.trim();
+      // A very basic check for PEM framing. node-forge likely does more robust checks.
+      if (trimmedCaCertPem && (!trimmedCaCertPem.startsWith('-----BEGIN CERTIFICATE-----') || !trimmedCaCertPem.endsWith('-----END CERTIFICATE-----'))) {
+        console.warn('CA certificate PEM string does not appear to be correctly framed. Attempting to parse anyway. Content (first 100 chars):', trimmedCaCertPem.substring(0, 100));
+      }
+      caCert = forge.pki.certificateFromPem(trimmedCaCertPem);
     } catch (e: any) {
-      console.error('FATAL: Failed to parse CA certificate PEM:', e);
+      console.error(`FATAL: Failed to parse CA certificate PEM. Error: ${e.message}. CA Cert Path: ${CA_CERT_PATH}. PEM content (first 100 chars): '${caCertPem.substring(0,100)}...'`);
       // Provide a more specific error response
       return res.status(500).json({ success: false, error: `Internal server error: Could not parse CA certificate: ${e.message}` });
     }
