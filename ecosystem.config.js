@@ -20,9 +20,19 @@ module.exports = {
   {
     name: 'app',
     script: 'npm',
-    args: 'run dev',
+    args: 'run dev', // Consider changing to 'npm run start' or similar for production builds
     cwd: 'src/app',
     watch: false,
+    env: {
+      NODE_ENV: "production", // Or development
+      PORT: 3001,
+      API_URL: "https://urp.ogt11.com/api", // Or your local API URL
+      // --- Add CA Configuration ---
+      CA_CERT_PATH: "/path/to/your/ca.crt.pem", // <-- REPLACE THIS PATH
+      CA_KEY_PATH: "/path/to/your/ca.key.pem",   // <-- REPLACE THIS PATH
+      // CA_KEY_PASSPHRASE: "your_ca_key_passphrase" // Uncomment and set if your key is encrypted
+      // --- End CA Configuration ---
+    },
     error_file: '/var/spool/certM3/logs/app-error.log',
     out_file: '/var/spool/certM3/logs/app-out.log',
     log_file: '/var/spool/certM3/logs/app-combined.log',
