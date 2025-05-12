@@ -7,7 +7,20 @@ An incompatibility was observed when using an Elliptic Curve (EC) Certificate Au
 ## Details
 
 ### Context
-Our application (`src/app/src/server.ts`) uses `node-forge` to load a CA certificate and its private key for the purpose of signing client certificates.
+Our application uses `node-forge` to load a CA certificate and its private key for the purpose of signing client certificates. The relevant code in our server (`src/app/src/server.ts`) that attempts to parse the CA certificate PEM is:
+
+```typescript
+// (caCertPem is a string containing the CA certificate read from file)
+let caCert: forge.pki.Certificate;
+try {
+  const trimmedCaCertPem = caCertPem.trim();
+  // ... (some preliminary checks)
+  caCert = forge.pki.certificateFromPem(trimmedCaCertPem); // This line fails
+} catch (e: any) {
+  console.error(`FATAL: Failed to parse CA certificate PEM. Error: ${e.message}. ...`);
+  // ...
+}
+```
 
 ### Problematic Scenario: EC CA generated with OpenSSL
 1.  **CA Generation**: An EC CA certificate and private key were generated using `openssl` command-line tools.
@@ -15,7 +28,7 @@ Our application (`src/app/src/server.ts`) uses `node-forge` to load a CA certifi
     *   Curve: `secp384r1` (NIST P-384)
     *   The `openssl x509 -in ca-cert.pem -text -noout` command successfully parsed and displayed the certificate details, confirming its structural validity from OpenSSL's perspective. The "Public Key Algorithm" was `id-ecPublicKey` with `ASN1 OID: secp384r1`.
 
-2.  **Application Behavior**: When `src/app/src/server.ts` attempted to load this EC CA certificate using `forge.pki.certificateFromPem(caCertPem)`, the operation failed.
+2.  **Application Behavior**: When the `forge.pki.certificateFromPem(trimmedCaCertPem)` line (shown above) in `src/app/src/server.ts` attempted to load this EC CA certificate, the operation failed.
     *   **Error Message**: `"Internal server error: Could not parse CA certificate: Cannot read public key. OID is not RSA."` (or similar, indicating an issue with recognizing the public key type).
 
 ### Successful Scenario: RSA CA generated with node-forge
@@ -23,7 +36,7 @@ Our application (`src/app/src/server.ts`) uses `node-forge` to load a CA certifi
     *   Key type: RSA
     *   Key size: 2048 bits
 
-2.  **Application Behavior**: When `src/app/src/server.ts` loaded this `node-forge`-generated RSA CA certificate using the same `forge.pki.certificateFromPem(caCertPem)` call, it succeeded. The application was then able to correctly sign client certificates.
+2.  **Application Behavior**: When the same `forge.pki.certificateFromPem(trimmedCaCertPem)` call in `src/app/src/server.ts` loaded this `node-forge`-generated RSA CA certificate, it succeeded. The application was then able to correctly sign client certificates.
 
 ## Conclusion & Potential Issue for node-forge
 
