@@ -120,9 +120,9 @@ async function generateCA() {
   fs.chmodSync(caConfig.output.keyPath, 0o400);
 
   console.log('\nCA generation complete.');
-  console.log('\nUpdate your environment variables with these paths:');
-  console.log(`CA_CERT_PATH="${caConfig.output.certPath}"`);
-  console.log(`CA_KEY_PATH="${caConfig.output.keyPath}"`);
+  console.log('\nUpdate your ecosystem.config.js or environment variables with these paths:');
+  console.log(`CA_CERT_PATH: "${caConfig.output.certPath}",`);
+  console.log(`CA_KEY_PATH: "${caConfig.output.keyPath}",`);
 }
 
 generateCA().catch(err => {
