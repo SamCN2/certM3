@@ -411,7 +411,7 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
 
     // Add extensions (customize as needed)
     const csrEmail = parsedCsr.subject.getField('E')?.value;
-    const extensions: forge.pki.Extension[] = [
+    const extensions: any[] = [ // Changed type to any[] to match node-forge's setExtensions signature
       { name: 'basicConstraints', cA: false },
       { name: 'keyUsage', keyCertSign: false, digitalSignature: true, nonRepudiation: true, keyEncipherment: true, dataEncipherment: true }
     ];
