@@ -407,7 +407,10 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
     if (!parsedCsr.publicKey) {
       throw new Error('CSR does not contain a public key.');
     }
-    cert.publicKey = parsedCsr.publicKey;
+    // Re-parse the public key from the CSR to ensure compatibility
+    const publicKeyPem = forge.pki.publicKeyToPem(parsedCsr.publicKey);
+    cert.publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
+
 
     // Add extensions (customize as needed)
     const csrEmail = parsedCsr.subject.getField('E')?.value;
