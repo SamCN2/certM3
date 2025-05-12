@@ -438,7 +438,6 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
       error: `Failed to sign certificate: ${error.message || 'An unknown error occurred'}`
       });
     }
-  }
 });
 
 // Ensure /app/check-username/:username always returns JSON
