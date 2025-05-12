@@ -72,7 +72,6 @@ validatePaths();
 // --- CA Configuration Loading ---
 const CA_CERT_PATH = process.env.CA_CERT_PATH;
 const CA_KEY_PATH = process.env.CA_KEY_PATH;
-const CA_KEY_PASSPHRASE = process.env.CA_KEY_PASSPHRASE || null; // Optional passphrase
 
 if (!CA_CERT_PATH || !CA_KEY_PATH) {
   console.error('FATAL: CA_CERT_PATH and CA_KEY_PATH environment variables must be set.');
@@ -393,17 +392,16 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
 
     let caKey: forge.pki.PrivateKey;
     try {
-      if (CA_KEY_PASSPHRASE) {
-        caKey = forge.pki.decryptRsaPrivateKey(caKeyPem, CA_KEY_PASSPHRASE);
-      } else {
-        caKey = forge.pki.privateKeyFromPem(caKeyPem);
-      }
+      // Load the private key directly from PEM, assuming it's not passphrase protected.
+      caKey = forge.pki.privateKeyFromPem(caKeyPem);
+
       if (!caKey) {
         // This case should ideally be caught by privateKeyFromPem throwing or returning null
-        throw new Error('Could not load CA private key. Ensure key is valid and passphrase (if any) is correct.');
+        // or if the key file is actually encrypted but no passphrase was expected/provided.
+        throw new Error('Could not load CA private key. Ensure the key file is valid and not encrypted.');
       }
     } catch (e: any) {
-      console.error('Error loading/decrypting CA private key:', e);
+      console.error('Error loading CA private key:', e);
       return res.status(500).json({ success: false, error: `Internal server error: Failed to load CA key: ${e.message}` });
     }
 
