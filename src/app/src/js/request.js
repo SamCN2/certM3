@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     successMessage.style.display = 'none';
 
     try {
-      const response = await fetch('/api/requests', {
+      const response = await fetch('/app/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,17 +100,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (response.ok) {
-        successMessage.textContent = 'Request submitted successfully! Please check your email for the validation link.';
+        successMessage.textContent = result.data.message || 'Request submitted successfully! Please check your email for the validation link.';
         successMessage.style.display = 'block';
         form.reset();
         
-        // For testing purposes, redirect to validation page with request ID
-        // In production, this would be handled by the email link
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          setTimeout(() => {
-            window.location.href = `/app/validate/${result.id}`;
-          }, 2000);
-        }
+        // Redirect to validation page using server-provided URL
+        setTimeout(() => {
+          window.location.replace(result.data.redirect);
+        }, 2000);
       } else {
         errorMessage.textContent = result.error || 'Failed to submit request';
         errorMessage.style.display = 'block';

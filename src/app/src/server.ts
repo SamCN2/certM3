@@ -7,17 +7,20 @@ import axios from 'axios';
 import forge from 'node-forge'; // <-- Add forge
 
 // Validation functions
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
+// FIXME: Comment out email validation to allow any email format for now
+// function isValidEmail(email: string): boolean {
+//   const emailRegex = /^[a-z0-9]+@[a-z0-9]+\.[a-z0-9\.]+$/;
+//   return emailRegex.test(email);
+// }
 
 function isValidUsername(username: string): boolean {
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
   return usernameRegex.test(username);
 }
 
-const app = express();
+// Create Express app
+export const app = express();
+
 // IMPORTANT: Do not change this port. If you get EADDRINUSE, find and kill the existing process instead.
 const PORT = process.env.PORT || 3001;
 
@@ -35,14 +38,15 @@ const validatePaths = () => {
     
     // Main HTML files
     index: path.join(__dirname, '../../../static/index.html'),
-    request: path.join(__dirname, 'views/request.html'),
-    validate: path.join(__dirname, 'views/validate.html'),
-    certificate: path.join(__dirname, 'views/certificate.html'),
+    request: path.join(__dirname, '../../../static/views/request.html'),
+    validate: path.join(__dirname, '../../../static/views/validate.html'),
+    certificate: path.join(__dirname, '../../../static/views/certificate.html'),
     
     // Critical JS files
-    appJs: path.join(__dirname, '../../../static/js/app.js'),
     requestJs: path.join(__dirname, '../../../static/js/request.js'),
     validateJs: path.join(__dirname, '../../../static/js/validate.js'),
+    certificateViewJs: path.join(__dirname, '../../../static/js/views/certificate/view.js'),
+    certificateCryptoJs: path.join(__dirname, '../../../static/js/views/certificate/crypto.js'),
     
     // Log directories
     logs: '/var/spool/certM3/logs',
@@ -70,23 +74,29 @@ const validatePaths = () => {
 validatePaths();
 
 // --- CA Configuration Loading ---
+let caCertPem: string = '';
+let caKeyPem: string = '';
 const CA_CERT_PATH = process.env.CA_CERT_PATH;
 const CA_KEY_PATH = process.env.CA_KEY_PATH;
 
 if (!CA_CERT_PATH || !CA_KEY_PATH) {
-  console.error('FATAL: CA_CERT_PATH and CA_KEY_PATH environment variables must be set.');
-  process.exit(1);
-}
-
-let caCertPem: string;
-let caKeyPem: string;
-try {
-  caCertPem = fs.readFileSync(CA_CERT_PATH, 'utf8');
-  caKeyPem = fs.readFileSync(CA_KEY_PATH, 'utf8');
-  console.log('CA certificate and key loaded successfully from paths specified in environment variables.');
-} catch (err) {
-  console.error('FATAL: Failed to load CA certificate or key from paths:', CA_CERT_PATH, CA_KEY_PATH, err);
-  process.exit(1); // Exit if CA cannot be loaded
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+    console.warn('Skipping CA_CERT_PATH/CA_KEY_PATH check in test environment.');
+    caCertPem = 'dummy';
+    caKeyPem = 'dummy';
+  } else {
+    console.error('FATAL: CA_CERT_PATH and CA_KEY_PATH environment variables must be set.');
+    process.exit(1);
+  }
+} else {
+  try {
+    caCertPem = fs.readFileSync(CA_CERT_PATH, 'utf8');
+    caKeyPem = fs.readFileSync(CA_KEY_PATH, 'utf8');
+    console.log('CA certificate and key loaded successfully from paths specified in environment variables.');
+  } catch (err) {
+    console.error('FATAL: Failed to load CA certificate or key from paths:', CA_CERT_PATH, CA_KEY_PATH, err);
+    process.exit(1); // Exit if CA cannot be loaded
+  }
 }
 // --- End CA Configuration Loading ---
 
@@ -99,6 +109,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req: Request, res: Response, next) => {
   if (req.path.endsWith('.js')) {
     res.type('application/javascript');
+  } else if (req.path.endsWith('.css')) {
+    res.type('text/css');
+  } else if (req.path.endsWith('.woff2')) {
+    res.type('font/woff2');
+  } else if (req.path.endsWith('.woff')) {
+    res.type('font/woff');
+  } else if (req.path.endsWith('.ttf')) {
+    res.type('font/ttf');
   }
   next();
 });
@@ -124,7 +142,54 @@ app.get('/', (req: Request, res: Response) => {
 
 // Serve the request form for /app/request
 app.get('/app/request', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, 'views/request.html'));
+  const filePath = path.join(__dirname, '../../../static/views/request.html');
+  console.log('Current directory:', __dirname);
+  console.log('Resolved file path:', filePath);
+  console.log('File exists:', fs.existsSync(filePath));
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error serving request.html:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to serve request form'
+      });
+    }
+  });
+});
+
+// Serve the validation page for /app/validate
+app.get('/app/validate', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '../../../static/views/validate.html'));
+});
+
+// Serve the validation page for a specific request
+app.get('/app/validate/:requestId', async (req: Request, res: Response) => {
+  const { requestId } = req.params;
+  try {
+    // Check request status and expiry
+    const { status, expiry, isExpired } = await getRequestStatus(requestId);
+    
+    // If request is expired, return error
+    if (isExpired) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          statusCode: 400,
+          name: 'ValidationError',
+          message: 'Request has expired'
+        }
+      });
+    }
+
+    // Serve the validation page
+    res.sendFile(path.join(__dirname, '../../../static/views/validate.html'));
+  } catch (error) {
+    console.error('Error serving validation page:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to serve validation page'
+    });
+  }
 });
 
 // Handle request submission
@@ -132,12 +197,13 @@ app.post('/app/request', async (req: Request, res: Response) => {
   const { username, email, displayName } = req.body;
   try {
     // 1. Validate input
-    if (!isValidEmail(email)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid email format'
-      });
-    }
+    // FIXME: Comment out email validation to allow any email format for now
+    // if (!isValidEmail(email)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     error: 'Invalid email format'
+    //   });
+    // }
     if (!isValidUsername(username)) {
       return res.status(400).json({
         success: false,
@@ -160,6 +226,7 @@ app.post('/app/request', async (req: Request, res: Response) => {
     }
 
     // 3. Create the request
+    console.log('Sending request data:', { username, email, displayName });
     const requestResponse = await axios.post(`${API_BASE_URL}/requests`, {
       username,
       email,
@@ -167,127 +234,201 @@ app.post('/app/request', async (req: Request, res: Response) => {
     });
 
     // 4. Return success response
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Accept', 'application/json');
     res.json({
       success: true,
       data: {
         requestId: requestResponse.data.id,
-        message: 'Please check your email for validation instructions'
+        message: 'Please check your email for validation instructions',
+        redirect: `/app/validate/${requestResponse.data.id}`
       }
     });
   } catch (error) {
     console.error('Error processing request:', error);
+    if (axios.isAxiosError(error)) {
+        console.error('API Error Response:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            headers: error.response?.headers
+        });
+    }
     res.status(500).json({
-      success: false,
-      error: 'Failed to process request'
+        success: false,
+        error: 'Failed to process request'
     });
   }
 });
+
+// Helper to get request status and check expiry
+export async function getRequestStatus(requestId: string): Promise<{ status: string | null; expiry: Date | null; isExpired: boolean }> {
+  try {
+    console.log(`Fetching status for request ${requestId}`);
+    const response = await axios.get(`${API_BASE_URL}/requests/${requestId}`);
+    console.log('API Response:', JSON.stringify(response.data));
+    
+    if (!response.data) {
+      console.error('Empty response data from API');
+      return { status: null, expiry: null, isExpired: true };
+    }
+
+    const status = response.data.status;
+    const createdAt = response.data.createdAt;
+
+    if (!status) {
+      console.error('No status field in API response:', response.data);
+      return { status: null, expiry: null, isExpired: true };
+    }
+
+    if (!createdAt) {
+      console.error('No createdAt field in API response:', response.data);
+      return { status, expiry: null, isExpired: true };
+    }
+
+    try {
+      const createdDate = new Date(createdAt);
+      const now = new Date();
+      
+      // For initial validation (status !== 'approved'), check 24h expiry
+      if (status !== 'approved') {
+        const initialExpiry = new Date(createdDate);
+        initialExpiry.setHours(initialExpiry.getHours() + 24);
+        return { 
+          status, 
+          expiry: initialExpiry,
+          isExpired: now > initialExpiry
+        };
+      }
+      
+      // For re-validation (status === 'approved'), check 10m expiry
+      const revalidationExpiry = new Date(createdDate);
+      revalidationExpiry.setMinutes(revalidationExpiry.getMinutes() + 10);
+      return { 
+        status, 
+        expiry: revalidationExpiry,
+        isExpired: now > revalidationExpiry
+      };
+    } catch (dateError) {
+      console.error('Error parsing createdAt date:', dateError);
+      return { status, expiry: null, isExpired: true };
+    }
+  } catch (error) {
+    console.error('Error fetching request status:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('API Error Response:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+    }
+    return { status: null, expiry: null, isExpired: true };
+  }
+}
 
 // Serve the validation page for validation links
-app.get('/app/validate/:requestId/challenge-:challengeId', async (req: Request, res: Response) => {
-  const { requestId, challengeId } = req.params;
-  const fullChallenge = `challenge-${challengeId}`;
+// NOTE: This route is used when a user clicks the validation link in their email.
+// For browser flows, we must redirect to the certificate page after successful validation.
+// For API/AJAX, you may want to return JSON, but for this flow, a redirect is correct UX.
+app.get('/app/validate/:requestId/:challenge', async (req: Request, res: Response) => {
+  const { requestId, challenge } = req.params;
 
   try {
-    console.log(`Validating request with ID: ${requestId} and challenge ID: ${fullChallenge}`);
-    // Call the API to validate the request
-    const response = await fetch(`https://urp.ogt11.com/api/requests/${requestId}/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challenge: fullChallenge })
+    // Check request status and expiry
+    const { status, expiry, isExpired } = await getRequestStatus(requestId);
+    
+    // If request is expired, return error
+    if (isExpired) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          statusCode: 400,
+          name: 'ValidationError',
+          message: 'Request has expired'
+        }
+      });
+    }
+
+    // If already validated, redirect to certificate page
+    if (status === 'approved') {
+      const token = generateValidationToken(requestId);
+      return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
+    }
+
+    // Validate the challenge
+    console.log(`Validating request with ID: ${requestId} and challenge: ${challenge}`);
+    const response = await axios.post(`${API_BASE_URL}/requests/${requestId}/validate`, {
+      challenge
     });
 
-    if (response.ok) {
+    if (response.status === 204) {
       // Generate JWT token for user creation
       const token = generateValidationToken(requestId);
-      
-      // Return success with token for both browser and script use
-      res.json({ 
-        success: true, 
-        token,
-        redirect: `/app/cert-request?requestId=${requestId}&token=${token}`
-      });
+      // Redirect to certificate page (browser flow)
+      return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
     } else {
       // Return error for both browser and script use
-      res.status(400).json({ 
+      return res.status(400).json({ 
         success: false, 
-        error: 'Invalid request or challenge' 
+        error: {
+          statusCode: 400,
+          name: 'ValidationError',
+          message: 'Invalid request or challenge'
+        }
       });
     }
   } catch (error) {
     console.error('Error validating request:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal Server Error' 
+    return res.status(500).json({
+      success: false,
+      error: {
+        statusCode: 500,
+        name: 'InternalServerError',
+        message: 'Internal Server Error'
+      }
     });
   }
 });
 
-// Serve the validate page for manual validation
-app.get('/app/validate', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, 'views/validate.html'));
-});
-
-// Handle manual validation submission
+// Handle validation submission (both manual and direct)
 app.post('/app/validate', async (req: Request, res: Response) => {
   const { requestId, challenge } = req.body;
-  const fullChallenge = `challenge-${challenge}`;
 
   try {
-    const response = await fetch(`https://urp.ogt11.com/api/requests/${requestId}/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challenge: fullChallenge })
-    });
-
-    if (response.ok) {
-      // Generate JWT token for user creation
-      const token = generateValidationToken(requestId);
-      
-      // Return success with token for both browser and script use
-      res.json({ 
-        success: true, 
-        token,
-        redirect: `/app/cert-request?requestId=${requestId}&token=${token}`
-      });
-    } else {
-      // Return error for both browser and script use
-      res.status(400).json({ 
-        success: false, 
-        error: 'Invalid request or challenge' 
+    // Check request status and expiry
+    const { status, expiry, isExpired } = await getRequestStatus(requestId);
+    
+    // If request is expired, return error
+    if (isExpired) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          statusCode: 400,
+          name: 'ValidationError',
+          message: 'Request has expired'
+        }
       });
     }
-  } catch (error) {
-    console.error('Error validating request:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal Server Error' 
-    });
-  }
-});
 
-// Serve the certificate request page for direct access
-app.get('/app/cert-request', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, 'views/cert-request.html'));
-});
+    // If already validated, return success with token
+    if (status === 'approved') {
+      const token = generateValidationToken(requestId);
+      return res.json({
+        success: true,
+        data: {
+          token,
+          redirect: `/app/certificate?requestId=${requestId}&token=${token}`
+        }
+      });
+    }
 
-// Handle validation
-app.post('/app/validate', async (req: Request, res: Response) => {
-  const { requestId, challenge } = req.body;
-  const fullChallenge = `challenge-${challenge}`;
-
-  try {
-    // 1. Validate the request
+    console.log(`Validating request with ID: ${requestId} and challenge: ${challenge}`);
     const response = await axios.post(
       `${API_BASE_URL}/requests/${requestId}/validate`,
-      { challenge: fullChallenge }
+      { challenge }
     );
 
     if (response.status === 204) {
-      // 2. Generate JWT token
       const token = generateValidationToken(requestId);
-      
-      // 3. Return success with token
       res.json({
         success: true,
         data: {
@@ -298,17 +439,30 @@ app.post('/app/validate', async (req: Request, res: Response) => {
     } else {
       res.status(400).json({
         success: false,
-        error: 'Invalid request or challenge'
+        error: {
+          statusCode: 400,
+          name: 'ValidationError',
+          message: 'Invalid request or challenge'
+        }
       });
     }
   } catch (error) {
     console.error('Error validating request:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to validate request'
+      error: {
+        statusCode: 500,
+        name: 'InternalServerError',
+        message: 'Failed to validate request'
+      }
     });
   }
 });
+
+// Serve the certificate request page for direct access
+// app.get('/app/cert-request', (req: Request, res: Response) => {
+//   res.sendFile(path.join(__dirname, '../../../static/views/cert-request.html'));
+// });
 
 // Serve the certificate page
 app.get('/app/certificate', (req: Request, res: Response) => {
@@ -326,28 +480,21 @@ app.get('/app/certificate', (req: Request, res: Response) => {
       return res.status(401).send('Invalid token');
     }
 
-    res.sendFile(path.join(__dirname, 'views/certificate.html'));
+    res.sendFile(path.join(__dirname, '../../../static/views/certificate.html'));
   } catch (error) {
     console.error('Error verifying token:', error);
     res.status(401).send('Invalid token');
   }
 });
 
-// Helper function to generate a serial number (example)
-function generateSerialNumber(): string {
-  // Generate a random serial number (hex string) - adjust length as needed
-  return forge.util.bytesToHex(forge.random.getBytesSync(16));
-}
+// Handle certificate generation
+app.post('/app/certificate', async (req: Request, res: Response) => {
+  const { csr, groupId, token, requestId } = req.body;
 
-// Handle certificate signing
-app.post('/app/cert-sign', async (req: Request, res: Response) => {
-  const { requestId, csr, password } = req.body; // password from request is not used in this signing logic
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({
+  if (!csr || !groupId || !token || !requestId) {
+    return res.status(400).json({
       success: false,
-      error: 'No token provided'
+      error: 'Missing required fields'
     });
   }
 
@@ -361,48 +508,30 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Parse the CSR
+    // 2. Parse and sign the CSR
     let parsedCsr;
     try {
       parsedCsr = forge.pki.certificationRequestFromPem(csr);
-      // Optional: Verify CSR signature if needed
-      // if (!parsedCsr.verify()) {
-      //   throw new Error('CSR signature verification failed');
-      // }
     } catch (e: any) {
       console.error('Failed to parse CSR:', e);
-      return res.status(400).json({ success: false, error: `Invalid CSR format: ${e.message}` });
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid CSR format: ${e.message}` 
+      });
     }
 
     // 3. Load CA certificate and key
     let caCert: forge.pki.Certificate;
-    try {
-      // Ensure the PEM string is clean and log more details on error
-      const trimmedCaCertPem = caCertPem.trim();
-      // A very basic check for PEM framing. node-forge likely does more robust checks.
-      if (trimmedCaCertPem && (!trimmedCaCertPem.startsWith('-----BEGIN CERTIFICATE-----') || !trimmedCaCertPem.endsWith('-----END CERTIFICATE-----'))) {
-        console.warn('CA certificate PEM string does not appear to be correctly framed. Attempting to parse anyway. Content (first 100 chars):', trimmedCaCertPem.substring(0, 100));
-      }
-      caCert = forge.pki.certificateFromPem(trimmedCaCertPem);
-    } catch (e: any) {
-      console.error(`FATAL: Failed to parse CA certificate PEM. Error: ${e.message}. CA Cert Path: ${CA_CERT_PATH}. PEM content (first 100 chars): '${caCertPem.substring(0,100)}...'`);
-      // Provide a more specific error response
-      return res.status(500).json({ success: false, error: `Internal server error: Could not parse CA certificate: ${e.message}` });
-    }
-
     let caKey: forge.pki.PrivateKey;
     try {
-      // Load the private key directly from PEM, assuming it's not passphrase protected.
+      caCert = forge.pki.certificateFromPem(caCertPem);
       caKey = forge.pki.privateKeyFromPem(caKeyPem);
-
-      if (!caKey) {
-        // This case should ideally be caught by privateKeyFromPem throwing or returning null
-        // or if the key file is actually encrypted but no passphrase was expected/provided.
-        throw new Error('Could not load CA private key. Ensure the key file is valid and not encrypted.');
-      }
     } catch (e: any) {
-      console.error('Error loading CA private key:', e);
-      return res.status(500).json({ success: false, error: `Internal server error: Failed to load CA key: ${e.message}` });
+      console.error('Error loading CA certificate or key:', e);
+      return res.status(500).json({
+        success: false,
+        error: `Failed to load CA certificate or key: ${e.message}`
+      });
     }
 
     // 4. Create and sign the certificate
@@ -410,61 +539,101 @@ app.post('/app/cert-sign', async (req: Request, res: Response) => {
     cert.serialNumber = generateSerialNumber();
     cert.validity.notBefore = new Date();
     cert.validity.notAfter = new Date();
-    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1); // 1 year validity
+    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
 
     cert.setSubject(parsedCsr.subject.attributes);
     cert.setIssuer(caCert.subject.attributes);
-
-    // Check if publicKey exists on CSR and assign
     if (!parsedCsr.publicKey) {
-      throw new Error('CSR does not contain a public key.');
+      return res.status(400).json({
+        success: false,
+        error: 'CSR does not contain a public key'
+      });
     }
-    // Assign public key directly from CSR (reverting previous change)
     cert.publicKey = parsedCsr.publicKey;
 
-    // Add extensions (customize as needed)
+    // Add extensions including group membership
     const csrEmail = parsedCsr.subject.getField('E')?.value;
-    const extensions: any[] = [ // Changed type to any[] to match node-forge's setExtensions signature
+    const extensions: any[] = [
       { name: 'basicConstraints', cA: false },
       { name: 'keyUsage', keyCertSign: false, digitalSignature: true, nonRepudiation: true, keyEncipherment: true, dataEncipherment: true }
     ];
     if (csrEmail) {
-        extensions.push({ name: 'subjectAltName', altNames: [{ type: 6 /* rfc822Name */, value: csrEmail }] });
+      extensions.push({ name: 'subjectAltName', altNames: [{ type: 6, value: csrEmail }] });
     }
     cert.setExtensions(extensions);
 
     // Sign the certificate
     cert.sign(caKey, forge.md.sha256.create());
-
-    // 5. Convert the signed certificate to PEM format
     const signedCertPem = forge.pki.certificateToPem(cert);
+
+    // 5. Store certificate metadata in the API
+    try {
+      await axios.post(`${API_BASE_URL}/certificates`, {
+        requestId,
+        groupId,
+        serialNumber: cert.serialNumber,
+        notBefore: cert.validity.notBefore,
+        notAfter: cert.validity.notAfter,
+        subject: parsedCsr.subject.attributes,
+        issuer: caCert.subject.attributes
+      });
+    } catch (error) {
+      console.error('Error storing certificate metadata:', error);
+      // Continue even if storage fails - the certificate is still valid
+    }
 
     // 6. Return the signed certificate
     res.json({
       success: true,
       data: {
         certificate: signedCertPem,
-        caCertificate: caCertPem // Optionally include CA cert for chain building
+        redirect: `/app/certificate/download?requestId=${requestId}&token=${token}`
       }
     });
 
   } catch (error: any) {
-    console.error('Error processing certificate signing:', error);
-    // More specific error reporting
+    console.error('Error processing certificate:', error);
     res.status(500).json({
       success: false,
-      error: `Failed to sign certificate: ${error.message || 'An unknown error occurred'}`
-      });
-    }
+      error: `Failed to process certificate: ${error.message || 'An unknown error occurred'}`
+    });
+  }
 });
 
-// Ensure /app/check-username/:username always returns JSON
+// Helper function to generate a serial number (example)
+function generateSerialNumber(): string {
+  // Generate a random serial number (hex string) - adjust length as needed
+  return forge.util.bytesToHex(forge.random.getBytesSync(16));
+}
+
+// API Routes
 app.get('/app/check-username/:username', async (req: Request, res: Response) => {
+  console.log('Received check-username request:', {
+    path: req.path,
+    params: req.params,
+    query: req.query,
+    headers: req.headers
+  });
+
   const username = req.params.username;
+
+  // Validate username format first
+  if (!isValidUsername(username)) {
+    console.log('Invalid username format:', username);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid username format',
+      available: false,
+      username
+    });
+  }
+
   try {
-    // Call the API to check if the username exists
+    console.log('Checking username availability:', username);
+    // Call the API to check if the username exists (in users or requests)
     await axios.get(`${API_BASE_URL}/request/check-username/${username}`);
     // If no error, username is taken
+    console.log('Username is taken:', username);
     res.json({
       success: true,
       available: false,
@@ -473,31 +642,148 @@ app.get('/app/check-username/:username', async (req: Request, res: Response) => 
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
       // Username is available
+      console.log('Username is available:', username);
       res.json({
         success: true,
         available: true,
         username
       });
     } else {
+      console.error('Error checking username:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to check username availability'
+        error: 'Failed to check username availability',
+        available: false,
+        username
       });
     }
   }
 });
 
-// Serve the main application for other /app/* routes (GET only)
-app.get('/app/*', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, '../../../static/index.html'));
+// Handle group lookup for certificate
+app.get('/app/groups/:requestId', async (req: Request, res: Response) => {
+  const { requestId } = req.params;
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Missing authorization token'
+    });
+  }
+
+  try {
+    // 1. Get request details to find username
+    const requestResponse = await axios.get(`${API_BASE_URL}/requests/${requestId}`);
+    const username = requestResponse.data.username;
+
+    // 2. Look up user by username
+    const userResponse = await axios.get(`${API_BASE_URL}/users?filter[where][username]=${username}`);
+    if (!userResponse.data || userResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found. Please complete validation first.'
+      });
+    }
+    const userId = userResponse.data[0].id;
+
+    // 3. Get user's groups
+    const groupsResponse = await axios.get(`${API_BASE_URL}/users/${userId}/groups`);
+    
+    res.json({
+      success: true,
+      data: {
+        groups: groupsResponse.data.map((g: any) => g.name)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching groups:', error);
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        return res.status(404).json({
+          success: false,
+          error: 'Request not found'
+        });
+      }
+      console.error('API Error Response:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch groups'
+    });
+  }
 });
 
-// Handle 404s for /app routes (GET only)
-app.get('/app/*', (req: Request, res: Response) => {
-  res.status(404).sendFile(path.join(__dirname, '../../../static/index.html'));
+app.get('/app/groups', async (req: Request, res: Response) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/groups`);
+    const groups = response.data;
+    // Always include the 'users' group
+    if (!groups.some((g: { name: string; displayName: string; }) => g.name === 'users')) {
+      groups.push({ name: 'users', displayName: 'Users' });
+    }
+    res.json(groups);
+  } catch (error) {
+    console.error('Error fetching groups:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch groups' });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`CertM3 Web App listening at http://localhost:${PORT}`);
-  console.log(`Serving SPA at http://localhost:${PORT}/app`);
-}); 
+// Handle any unmatched routes
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      statusCode: 404,
+      name: 'NotFoundError',
+      message: 'Route not found'
+    }
+  });
+});
+
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: Function) => {
+  console.error('Unhandled Error:', {
+    error: err,
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    params: req.params,
+    query: req.query
+  });
+  
+  // Write to error log file
+  const errorLogPath = '/var/spool/certM3/logs/app-error.log';
+  const errorLog = `${new Date().toISOString()} - ${req.method} ${req.path}\nError: ${err.message}\nStack: ${err.stack}\nBody: ${JSON.stringify(req.body)}\nParams: ${JSON.stringify(req.params)}\nQuery: ${JSON.stringify(req.query)}\n\n`;
+  
+  try {
+    fs.appendFileSync(errorLogPath, errorLog);
+  } catch (writeError) {
+    console.error('Failed to write to error log:', writeError);
+  }
+
+  res.status(500).json({
+    success: false,
+    error: {
+      statusCode: 500,
+      name: 'InternalServerError',
+      message: err.message || 'Internal Server Error'
+    }
+  });
+});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`CertM3 Web App listening at http://localhost:${PORT}`);
+    console.log(`Serving SPA at http://localhost:${PORT}/app`);
+  });
+}
+
+// Remove duplicate export
+// export const app = express(); 

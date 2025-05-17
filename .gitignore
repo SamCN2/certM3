@@ -69,3 +69,4 @@ typings/
 
 # Emacs auto-save file
 \#*#
+.aider*

@@ -20,9 +20,15 @@ emailFile=$(ls -t /var/spool/certM3/test-emails/*$username-validation.txt | head
 # Extract the validation link from the email file
 validationLink=$(grep -o 'https://urp.ogt11.com/app/validate/[^ ]*' "$emailFile")
 
-# Print the validation tokens
+# Extract request ID and challenge from the validation link
+requestId=$(echo "$validationLink" | grep -o '/validate/[^/]*' | cut -d'/' -f3)
+challenge=$(echo "$validationLink" | grep -o 'challenge-[^/]*' | cut -d'-' -f2)
+
 echo "Request ID: $requestId"
-echo "Validation Link: $validationLink"
+echo "Challenge: $challenge"
+
+# Print the request ID and challenge for test-validate.sh
+echo "$requestId $challenge"
 
 # Verify the validation link response
 validationResponse=$(curl -s -o /dev/null -w "%{http_code}" "$validationLink")

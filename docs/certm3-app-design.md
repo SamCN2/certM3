@@ -771,6 +771,100 @@ This approach allows for:
 4. Testing of validation flow
 5. No risk of sending test emails to real addresses
 
+## API Communication and Security
+
+### App Server as API Gateway
+
+The app server acts as a secure gateway between client-side code and the API service. This architecture provides several important benefits:
+
+1. **Security**:
+   - API credentials and endpoints are never exposed to the client
+   - All API communication is server-to-server
+   - Input validation and sanitization happens server-side
+   - Rate limiting and other security measures can be implemented at the app server level
+
+2. **Business Logic**:
+   - Business rules and validation are enforced server-side
+   - Complex operations can be orchestrated without client knowledge
+   - Transaction management and error handling are centralized
+   - Consistent error responses and status codes
+
+3. **Flexibility**:
+   - API implementation details can be changed without client updates
+   - Caching and performance optimizations can be added server-side
+   - Monitoring and logging can be implemented consistently
+   - New security measures can be added without client changes
+
+### Implementation Guidelines
+
+1. **Client-Side Code**:
+   - Should only communicate with the app server
+   - Should not contain any API endpoints or credentials
+   - Should handle user interface concerns only
+   - Should not implement business logic
+
+2. **App Server**:
+   - Should implement all business logic
+   - Should handle all API communication
+   - Should validate and sanitize all input
+   - Should provide consistent error handling
+   - Should implement security measures
+
+3. **API Service**:
+   - Should only be accessible from the app server
+   - Should not be directly accessible from the client
+   - Should implement its own security measures
+   - Should focus on data operations
+
+### Example Flow
+
+1. **Request Submission**:
+   ```
+   Client -> App Server -> API Service
+   ```
+   - Client sends form data to app server
+   - App server validates input
+   - App server makes API calls
+   - App server returns formatted response
+
+2. **Validation**:
+   ```
+   Client -> App Server -> API Service
+   ```
+   - Client sends validation data to app server
+   - App server validates the request
+   - App server generates JWT token
+   - App server returns token and redirect URL
+
+3. **Certificate Request**:
+   ```
+   Client -> App Server -> API Service
+   ```
+   - Client sends certificate request to app server
+   - App server validates JWT token
+   - App server makes API calls
+   - App server returns certificate data
+
+### Security Considerations
+
+1. **Network Security**:
+   - API service should be on a private network
+   - Only app server should have access to API
+   - Use internal DNS or IP addresses
+   - Implement network-level security measures
+
+2. **Authentication**:
+   - JWT tokens for user sessions
+   - API keys for server-to-server communication
+   - Rate limiting for all endpoints
+   - Input validation at all levels
+
+3. **Monitoring**:
+   - Log all API calls
+   - Monitor for suspicious activity
+   - Track rate limit violations
+   - Alert on security events
+
 ## 4. Security Considerations
 
 1. **Key Generation**:
@@ -861,3 +955,28 @@ This approach allows for:
 - Native platform integration testing
 - Responsive design validation
 - Touch interface testing 
+
+### 1.7 Certificate Request and Signing Process
+
+The application will consolidate the CSR generation and signing processes into a single page:
+
+- **`/app/certificate` Page**:
+  - This page will serve as the main interface for users to generate a CSR and sign it.
+  - It will handle the entire process, including generating the CSR and sending it for signing, all within the same browser session.
+
+- **`/app/cert-sign` Endpoint**:
+  - This endpoint will handle the signing of the CSR and the delivery of the signed certificate.
+  - It will be called by the `/app/certificate` page to process the CSR into a certificate.
+
+- **No Redirects**:
+  - The process will remain on the `/app/certificate` page, providing a seamless user experience without redirects.
+
+### Benefits:
+- **User Experience**: Users will have a streamlined experience, as they won't need to navigate between different pages or endpoints.
+- **Simplicity**: The design simplifies the flow by keeping related operations together, reducing the complexity of the application.
+- **Consistency**: This approach aligns with the SPA design, where the application handles state and processes without full page reloads.
+
+### Considerations:
+- **Error Handling**: Ensure robust error handling to manage any issues that arise during CSR generation or signing.
+- **Security**: Validate and sanitize inputs to prevent security vulnerabilities, especially when handling cryptographic operations.
+- **Feedback**: Provide clear feedback to users about the status of their request, especially if there are any delays or issues.

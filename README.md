@@ -4,14 +4,14 @@ CertM3 is a comprehensive certificate management system designed to handle the l
 
 ## System Components
 
-### 1. API Service (`src/api`)
+### 1. API Service (`src/api`) - Pretty mature, but missing one group path
 The core backend service that provides RESTful APIs for certificate management. Built with LoopBack 4 and TypeScript, it handles:
 - User and group management
 - Certificate lifecycle (creation, validation, revocation)
 - Request processing
 - Role-based access control
 
-### 2. Web Application (`src/app`) - Coming Soon
+### 2. Web Application (`src/app`) - Working.  Rough edges!
 A user-friendly web interface for certificate management. Planned features include:
 - Certificate request submission
 - Status tracking

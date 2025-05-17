@@ -6,22 +6,23 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/server.ts",
-    "build": "npm run clean && npm run build:ts && npm run build:webpack && npm run copy-assets",
-    "build:ts": "tsc",
-    "build:webpack": "webpack --config webpack.config.js",
-    "copy-assets": "mkdir -p ../../static/views ../../static/js ../../static/css ../../static/assets && cp -r src/css/* ../../static/css/ 2>/dev/null || true && cp -r src/assets/* ../../static/assets/ 2>/dev/null || true && cp src/views/*.html ../../static/views/ 2>/dev/null || true && cp src/js/request.js ../../static/js/request.js && cp src/js/validate.js ../../static/js/validate.js",
-    "clean": "rimraf dist",
+    "build": "npm run clean && tsc && rm -f ../../static/css/app.css && cp src/css/styles.css ../../static/css/app.css && rm -f ../../static/index.html && cp src/index.html ../../static/index.html && rm -f ../../static/views/certificate.html && cp src/views/certificate.html ../../static/views/certificate.html && rm -f ../../static/views/request.html && cp src/views/request.html ../../static/views/request.html && rm -f ../../static/views/validate.html && cp src/views/validate.html ../../static/views/validate.html && rm -f ../../static/js/request.js && cp src/js/request.js ../../static/js/request.js && rm -f ../../static/js/validate.js && cp src/js/validate.js ../../static/js/validate.js && rm -f ../../static/js/views/certificate/view.js && cp src/js/views/certificate/view.js ../../static/js/views/certificate/view.js && rm -f ../../static/js/views/certificate/crypto.js && cp src/js/views/certificate/crypto.js ../../static/js/views/certificate/crypto.js && rm -f ../../static/js/jquery.min.js && cp node_modules/jquery/dist/jquery.min.js ../../static/js/jquery.min.js && rm -f ../../static/css/semantic.min.css && cp node_modules/semantic-ui-css/semantic.min.css ../../static/css/semantic.min.css && rm -f ../../static/js/semantic.min.js && cp node_modules/semantic-ui/dist/semantic.min.js ../../static/js/semantic.min.js && rm -f ../../static/js/node-forge.min.js && cp node_modules/node-forge/dist/forge.min.js ../../static/js/node-forge.min.js && cp node_modules/semantic-ui-css/themes/default/assets/fonts/* ../../static/assets/fonts/ 2>/dev/null || true",
+    "build:dirs": "mkdir -p ../../static/css ../../static/js/views/certificate ../../static/views ../../static/assets/fonts",
+    "clean": "rm -rf dist/*",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:routes": "ts-node tests/test-app.ts"
+    "test:routes": "ts-node tests/test-app.ts",
+    "test:static": "curl -s https://urp.ogt11.com/static/css/app.css | md5sum | cut -d ' ' -f1 > /tmp/app.css.md5 && md5sum src/css/styles.css | cut -d ' ' -f1 | diff - /tmp/app.css.md5 && echo 'CSS file checksum matches' && curl -s https://urp.ogt11.com/static/index.html | md5sum | cut -d ' ' -f1 > /tmp/index.html.md5 && md5sum src/index.html | cut -d ' ' -f1 | diff - /tmp/index.html.md5 && echo 'Index file checksum matches' && curl -s https://urp.ogt11.com/static/views/certificate.html | md5sum | cut -d ' ' -f1 > /tmp/certificate.html.md5 && md5sum src/views/certificate.html | cut -d ' ' -f1 | diff - /tmp/certificate.html.md5 && echo 'Certificate HTML checksum matches' && curl -s https://urp.ogt11.com/static/views/request.html | md5sum | cut -d ' ' -f1 > /tmp/request.html.md5 && md5sum src/views/request.html | cut -d ' ' -f1 | diff - /tmp/request.html.md5 && echo 'Request HTML checksum matches' && curl -s https://urp.ogt11.com/static/views/validate.html | md5sum | cut -d ' ' -f1 > /tmp/validate.html.md5 && md5sum src/views/validate.html | cut -d ' ' -f1 | diff - /tmp/validate.html.md5 && echo 'Validate HTML checksum matches' && curl -s https://urp.ogt11.com/static/js/request.js | md5sum | cut -d ' ' -f1 > /tmp/request.js.md5 && md5sum src/js/request.js | cut -d ' ' -f1 | diff - /tmp/request.js.md5 && echo 'Request JS checksum matches' && curl -s https://urp.ogt11.com/static/js/validate.js | md5sum | cut -d ' ' -f1 > /tmp/validate.js.md5 && md5sum src/js/validate.js | cut -d ' ' -f1 | diff - /tmp/validate.js.md5 && echo 'Validate JS checksum matches' && curl -s https://urp.ogt11.com/static/js/views/certificate/view.js | md5sum | cut -d ' ' -f1 > /tmp/view.js.md5 && md5sum src/js/views/certificate/view.js | cut -d ' ' -f1 | diff - /tmp/view.js.md5 && echo 'View JS checksum matches' && curl -s https://urp.ogt11.com/static/js/views/certificate/crypto.js | md5sum | cut -d ' ' -f1 > /tmp/crypto.js.md5 && md5sum src/js/views/certificate/crypto.js | cut -d ' ' -f1 | diff - /tmp/crypto.js.md5 && echo 'Crypto JS checksum matches' && curl -s https://urp.ogt11.com/static/js/jquery.min.js | md5sum | cut -d ' ' -f1 > /tmp/jquery.min.js.md5 && md5sum node_modules/jquery/dist/jquery.min.js | cut -d ' ' -f1 | diff - /tmp/jquery.min.js.md5 && echo 'jQuery checksum matches' && curl -s https://urp.ogt11.com/static/css/semantic.min.css | md5sum | cut -d ' ' -f1 > /tmp/semantic.min.css.md5 && md5sum node_modules/semantic-ui-css/semantic.min.css | cut -d ' ' -f1 | diff - /tmp/semantic.min.css.md5 && echo 'Semantic CSS checksum matches' && curl -s https://urp.ogt11.com/static/js/semantic.min.js | md5sum | cut -d ' ' -f1 > /tmp/semantic.min.js.md5 && md5sum node_modules/semantic-ui/dist/semantic.min.js | cut -d ' ' -f1 | diff - /tmp/semantic.min.js.md5 && echo 'Semantic JS checksum matches' && curl -s https://urp.ogt11.com/static/js/node-forge.min.js | md5sum | cut -d ' ' -f1 > /tmp/node-forge.min.js.md5 && md5sum node_modules/node-forge/dist/forge.min.js | cut -d ' ' -f1 | diff - /tmp/node-forge.min.js.md5 && echo 'Node-forge JS checksum matches'"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.9",
     "express": "^4.18.2",
+    "jquery": "^3.7.1",
     "jsonwebtoken": "^9.0.2",
     "node-forge": "^1.3.1",
-    "semantic-ui": "^2.5.0"
+    "semantic-ui": "^2.5.0",
+    "semantic-ui-css": "^2.5.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^9.3.4",
@@ -33,18 +34,16 @@
     "@typescript-eslint/eslint-plugin": "^7.0.1",
     "@typescript-eslint/parser": "^7.0.1",
     "axios": "^1.6.7",
+    "chai": "^5.2.0",
     "eslint": "^8.56.0",
     "gulp": "^5.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "jsdom": "^24.0.0",
+    "jsdom": "^24.1.3",
     "nodemon": "^3.1.0",
-    "rimraf": "^5.0.5",
+    "process": "^0.11.10",
     "ts-jest": "^29.1.2",
-    "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
-    "webpack": "^5.90.3",
-    "webpack-cli": "^5.1.4"
+    "typescript": "^5.3.3"
   }
 }

@@ -21,23 +21,26 @@
             <div class="ui segment">
                 <div class="ui info message">
                     <div class="header">Account Validation</div>
-                    <p>Please check your email for the validation link. Click the link in the email to complete your registration.</p>
+                    <p>Please check your email for the validation link. You can either:</p>
+                    <ol class="list">
+                        <li>Click the validation link in your email to validate automatically</li>
+                        <li>Enter your validation code below</li>
+                    </ol>
                 </div>
 
-                <div class="ui form">
+                <form id="validateForm" class="ui form">
                     <div class="field">
                         <label>Validation Code</label>
                         <div class="ui input">
-                            <input type="text" id="validation-code" placeholder="Enter the code from your email">
+                            <input type="text" id="challenge" placeholder="Enter the validation code from your email">
                         </div>
                     </div>
-                    <button class="ui primary button" id="validate-button">
+                    <button type="submit" class="ui primary button" id="validateButton">
                         <span class="button-text">Validate Account</span>
-                        <div class="ui active inline loader" style="display: none;"></div>
+                        <div class="ui active inline loader" id="loading" style="display: none;"></div>
                     </button>
-                </div>
-                <div class="ui error message" style="display: none;"></div>
-                <div class="ui success message" style="display: none;"></div>
+                </form>
+                <div id="status" class="ui message" style="display: none;"></div>
             </div>
         </main>
 

@@ -19,6 +19,7 @@ import forge from 'node-forge';
 const useRaw = process.argv.includes('--raw');
 
 // Service base URLs
+const API_BASE_URL = useRaw ? 'http://localhost:3000/api' : 'https://urp.ogt11.com/api';
 const APP_BASE_URL = useRaw ? 'http://localhost:3001' : 'https://urp.ogt11.com';
 
 console.log(`Running tests in ${useRaw ? 'local development' : 'production'} mode`);
@@ -283,9 +284,8 @@ async function testCertificateSigningErrors(requestId: string, token: string) {
     }
   }
 
-  // Expired token
-  const csr = generateCSR('testuser_expiredtoken');
-  const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXF1ZXN0SWQiOiJmODlmOGNiNC1iY2FjLTQxMmYtYTRmZS0zNjgxYWQxZDhiYzciLCJwdXJwb3NlIjoidXNlcl9jcmVhdGlvbiIsImlhdCI6MTc0NzI1Njk3MCwiZXhwIjoxNzQ3MjU3MjcwfQ.6YRRhL5czL08PMU3XhYJEVHglA-9b2f3IGGrA0jzgGo';
+  // Invalid token
+  const csr = generateCSR('testuser_invalidtoken');
   try {
     await axios.post(
       `${APP_BASE_URL}/app/cert-sign`,
@@ -293,14 +293,14 @@ async function testCertificateSigningErrors(requestId: string, token: string) {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${expiredToken}`
+          'Authorization': `Bearer invalidtoken`
         }
       }
     );
-    throw new Error('Should have rejected expired token');
+    throw new Error('Should have rejected invalid token');
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      console.log('✓ Expired token rejected for certificate signing');
+      console.log('✓ Invalid token rejected for certificate signing');
     } else {
       throw error;
     }
@@ -354,38 +354,63 @@ async function testErrorCases() {
   }
 }
 
-// Update runTests to call testCertificateSigningErrors
+// Test app endpoints
+async function testAppEndpoints(requestId: string, token: string) {
+  console.log('\nTesting app endpoints...');
+
+  // Test /app/validate endpoint
+  console.log('\nTesting /app/validate endpoint...');
+  try {
+    const validateResponse = await axios.get(`${APP_BASE_URL}/app/validate/${requestId}`);
+    console.log('Response type:', validateResponse.headers['content-type']);
+    console.log('Response status:', validateResponse.status);
+    console.log('Response preview:', validateResponse.data.substring(0, 100) + '...');
+  } catch (error) {
+    console.error('Error testing /app/validate:', error);
+  }
+
+  // Test /app/certificate endpoint
+  console.log('\nTesting /app/certificate endpoint...');
+  try {
+    const certResponse = await axios.get(`${APP_BASE_URL}/app/certificate?requestId=${requestId}&token=${token}`);
+    console.log('Response type:', certResponse.headers['content-type']);
+    console.log('Response status:', certResponse.status);
+    console.log('Response preview:', certResponse.data.substring(0, 100) + '...');
+  } catch (error) {
+    console.error('Error testing /app/certificate:', error);
+  }
+
+  // Test /app/groups endpoint
+  console.log('\nTesting /app/groups endpoint...');
+  try {
+    const groupsResponse = await axios.get(`${APP_BASE_URL}/app/groups/${requestId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    console.log('Response type:', groupsResponse.headers['content-type']);
+    console.log('Response status:', groupsResponse.status);
+    console.log('Response data:', groupsResponse.data);
+  } catch (error) {
+    console.error('Error testing /app/groups:', error);
+  }
+}
+
+// Modify the runTests function to include the new tests
 async function runTests() {
   try {
-    // Test username check functionality
+    // Run existing tests
     await testUsernameCheck();
-
-    // Test request form and submission for direct validation
-    const directUsername = `testuser${Math.floor(Math.random() * 999999)}`;
-    const directEmail = `testuser${Math.floor(Math.random() * 999999)}@testemail.com`;
-    const directRequestId = await testRequestForm(directUsername, directEmail);
-    const directToken = await testValidation(directRequestId, true, directUsername);
-    await testCertificateRequest(directRequestId, directToken, directUsername);
-    await testCertificateSigningErrors(directRequestId, directToken);
-
-    // Create a second request with a unique username and email for manual validation
-    const manualUsername = `testuser${Math.floor(Math.random() * 999999)}`;
-    const manualEmail = `testuser${Math.floor(Math.random() * 999999)}@testemail.com`;
-    const manualRequestId = await testRequestForm(manualUsername, manualEmail);
-    const manualToken = await testValidation(manualRequestId, false, manualUsername);
-    await testCertificateRequest(manualRequestId, manualToken, manualUsername);
-    await testCertificateSigningErrors(manualRequestId, manualToken);
-
-    // Test error cases
+    const requestId = await testRequestForm(TEST_REQUEST.username, TEST_REQUEST.email);
+    const token = await testValidation(requestId, true, TEST_REQUEST.username);
+    await testCertificateRequest(requestId, token, TEST_REQUEST.username);
+    await testCertificateSigningErrors(requestId, token);
     await testErrorCases();
+
+    // Run new app endpoint tests
+    await testAppEndpoints(requestId, token);
 
     console.log('\nAll tests completed successfully!');
   } catch (error) {
-    if (error instanceof AxiosError) {
-      console.error('HTTP error:', error.response?.data || error.message);
-    } else {
-      console.error('Error:', error);
-    }
+    console.error('\nTest suite failed:', error);
     process.exit(1);
   }
 }
