@@ -66,6 +66,11 @@ Common HTTP status codes:
 - **Error Codes:**
   - 404: User not found
 
+#### Get User Groups
+- **GET** `/users/{userId}/groups`
+- **Response:** Array of group names (strings)
+- **Note:** This endpoint returns a lightweight list of group names to avoid repeated calls to get group details.
+
 ### Certificates
 
 #### Create Certificate
@@ -170,6 +175,26 @@ Common HTTP status codes:
 - **Response:** Array of User objects
 - **Error Codes:**
   - 404: Group not found
+
+#### Add Group Members
+- **POST** `/groups/{name}/members`
+- **Request Body:**
+  ```json
+  {
+    "userIds": ["uuid1", "uuid2"]
+  }
+  ```
+- **Response:** 204 No Content
+
+#### Remove Group Members
+- **DELETE** `/groups/{name}/members`
+- **Request Body:**
+  ```json
+  {
+    "userIds": ["uuid1", "uuid2"]
+  }
+  ```
+- **Response:** 204 No Content
 
 ### Requests
 

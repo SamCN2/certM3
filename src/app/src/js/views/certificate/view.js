@@ -22,24 +22,58 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadGroups() {
     console.log('Loading groups...');
     try {
-      // Mock the Users group for now
-      const groups = [{
-        name: 'users',
-        displayName: 'Users'
-      }];
+      // Get token and requestId from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const requestId = urlParams.get('requestId');
+
+      if (!token || !requestId) {
+        throw new Error('Missing token or request ID');
+      }
+
+      // Get request details to get the username
+      const requestResponse = await fetch(`/app/request/${requestId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!requestResponse.ok) {
+        throw new Error('Failed to get request details');
+      }
+
+      const requestData = await requestResponse.json();
+      const username = requestData.data.username;
+
+      // Get user's groups
+      const groupsResponse = await fetch(`/app/users/${username}/groups`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!groupsResponse.ok) {
+        throw new Error('Failed to load groups');
+      }
+
+      const groupsData = await groupsResponse.json();
+      const groups = groupsData.data;
+
+      // Clear existing options
+      groupSelect.innerHTML = '';
       
-      console.log('Using mock groups:', groups);
-      
+      // Add groups to dropdown
       groups.forEach(group => {
         const option = document.createElement('option');
         option.value = group.name;
         option.textContent = group.displayName;
         groupSelect.appendChild(option);
       });
-      console.log('Groups loaded successfully');
+
+      console.log('Groups loaded successfully:', groups);
     } catch (error) {
       console.error('Error loading groups:', error);
-      errorMessage.textContent = 'Failed to load groups';
+      errorMessage.textContent = 'Failed to load groups: ' + error.message;
       errorMessage.style.display = 'block';
     }
   }

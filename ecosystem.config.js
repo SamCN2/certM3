@@ -4,9 +4,6 @@ module.exports = {
     script: 'src/api/dist/index.js',
     cwd: '.',
     watch: false,
-    env: {
-      NODE_ENV: 'development',
-    },
     env_production: {
       NODE_ENV: 'production',
     },
@@ -20,7 +17,7 @@ module.exports = {
   {
     name: 'app',
     script: 'npm',
-    args: 'run dev', // Consider changing to 'npm run start' or similar for production builds
+    args: 'run start', // Consider changing to 'npm run start' or similar for production builds
     cwd: 'src/app',
     watch: false,
     env: {

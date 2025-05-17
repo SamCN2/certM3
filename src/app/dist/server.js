@@ -314,6 +314,7 @@ async function getRequestStatus(requestId) {
 // For browser flows, we must redirect to the certificate page after successful validation.
 // For API/AJAX, you may want to return JSON, but for this flow, a redirect is correct UX.
 exports.app.get('/app/validate/:requestId/:challenge', async (req, res) => {
+    var _a, _b;
     const { requestId, challenge } = req.params;
     try {
         // Check request status and expiry
@@ -340,7 +341,28 @@ exports.app.get('/app/validate/:requestId/:challenge', async (req, res) => {
             challenge
         });
         if (response.status === 204) {
-            // Generate JWT token for user creation
+            // Get the username from the request
+            const requestResponse = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
+            const username = requestResponse.data.username;
+            // Add user to default group
+            try {
+                await axios_1.default.post(`${API_BASE_URL}/users/${username}/groups`, {
+                    groups: ['users']
+                });
+                console.log(`Added user ${username} to default 'users' group`);
+            }
+            catch (error) {
+                // Enhanced error logging for admin review
+                console.error('GROUP_ASSIGNMENT_ERROR:', {
+                    timestamp: new Date().toISOString(),
+                    username,
+                    requestId,
+                    error: ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message,
+                    status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
+                    action: 'add_to_users_group'
+                });
+                // Continue even if adding to group fails - the user is still created
+            }
             const token = (0, jwt_1.generateValidationToken)(requestId);
             // Redirect to certificate page (browser flow)
             return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
@@ -371,6 +393,7 @@ exports.app.get('/app/validate/:requestId/:challenge', async (req, res) => {
 });
 // Handle validation submission (both manual and direct)
 exports.app.post('/app/validate', async (req, res) => {
+    var _a, _b;
     const { requestId, challenge } = req.body;
     try {
         // Check request status and expiry
@@ -400,6 +423,28 @@ exports.app.post('/app/validate', async (req, res) => {
         console.log(`Validating request with ID: ${requestId} and challenge: ${challenge}`);
         const response = await axios_1.default.post(`${API_BASE_URL}/requests/${requestId}/validate`, { challenge });
         if (response.status === 204) {
+            // Get the username from the request
+            const requestResponse = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
+            const username = requestResponse.data.username;
+            // Add user to default group
+            try {
+                await axios_1.default.post(`${API_BASE_URL}/users/${username}/groups`, {
+                    groups: ['users']
+                });
+                console.log(`Added user ${username} to default 'users' group`);
+            }
+            catch (error) {
+                // Enhanced error logging for admin review
+                console.error('GROUP_ASSIGNMENT_ERROR:', {
+                    timestamp: new Date().toISOString(),
+                    username,
+                    requestId,
+                    error: ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message,
+                    status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
+                    action: 'add_to_users_group'
+                });
+                // Continue even if adding to group fails - the user is still created
+            }
             const token = (0, jwt_1.generateValidationToken)(requestId);
             res.json({
                 success: true,

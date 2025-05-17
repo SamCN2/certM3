@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Generate random username
-testusername="testuser$RANDOM"
+# Generate random username (3-20 chars, alphanumeric + underscore)
+testusername="test$(printf "%04d" $((RANDOM % 10000)))"
 
 # Check username availability
 while true; do
@@ -9,7 +9,7 @@ while true; do
     if echo "$response" | grep -q '"available":true'; then
         break
     fi
-    testusername="testuser$RANDOM"
+    testusername="test$(printf "%04d" $((RANDOM % 10000)))"
 done
 
 # Submit request
@@ -22,4 +22,4 @@ curl -s -X POST http://localhost:3001/app/request \
     }"
 
 # Extract validation link
-grep -h "https://.*/app/validate/.*challenge-.*" /var/spool/certM3/test-emails/*$testusername* 
+grep -h "https://.*/app/validate/" /var/spool/certM3/test-emails/*$testusername* 

@@ -361,7 +361,29 @@ app.get('/app/validate/:requestId/:challenge', async (req: Request, res: Respons
     });
 
     if (response.status === 204) {
-      // Generate JWT token for user creation
+      // Get the username from the request
+      const requestResponse = await axios.get(`${API_BASE_URL}/requests/${requestId}`);
+      const username = requestResponse.data.username;
+
+      // Add user to default group
+      try {
+        await axios.post(`${API_BASE_URL}/users/${username}/groups`, {
+          groups: ['users']
+        });
+        console.log(`Added user ${username} to default 'users' group`);
+      } catch (error: any) {
+        // Enhanced error logging for admin review
+        console.error('GROUP_ASSIGNMENT_ERROR:', {
+          timestamp: new Date().toISOString(),
+          username,
+          requestId,
+          error: error.response?.data || error.message,
+          status: error.response?.status,
+          action: 'add_to_users_group'
+        });
+        // Continue even if adding to group fails - the user is still created
+      }
+
       const token = generateValidationToken(requestId);
       // Redirect to certificate page (browser flow)
       return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
@@ -428,6 +450,29 @@ app.post('/app/validate', async (req: Request, res: Response) => {
     );
 
     if (response.status === 204) {
+      // Get the username from the request
+      const requestResponse = await axios.get(`${API_BASE_URL}/requests/${requestId}`);
+      const username = requestResponse.data.username;
+
+      // Add user to default group
+      try {
+        await axios.post(`${API_BASE_URL}/users/${username}/groups`, {
+          groups: ['users']
+        });
+        console.log(`Added user ${username} to default 'users' group`);
+      } catch (error: any) {
+        // Enhanced error logging for admin review
+        console.error('GROUP_ASSIGNMENT_ERROR:', {
+          timestamp: new Date().toISOString(),
+          username,
+          requestId,
+          error: error.response?.data || error.message,
+          status: error.response?.status,
+          action: 'add_to_users_group'
+        });
+        // Continue even if adding to group fails - the user is still created
+      }
+
       const token = generateValidationToken(requestId);
       res.json({
         success: true,
