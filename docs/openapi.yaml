@@ -359,6 +359,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /users/{userId}/groups:
+    get:
+      summary: Get groups for a user
+      description: Returns an array of group names for the specified user.
+      operationId: getUserGroups
+      tags:
+        - Users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID (must be a valid UUID)
+      responses:
+        '200':
+          description: Array of group names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: number
+                        example: 400
+                      name:
+                        type: string
+                        example: BadRequestError
+                      message:
+                        type: string
+                        example: Invalid user ID format. Expected a valid UUID.
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: number
+                        example: 404
+                      name:
+                        type: string
+                        example: NotFoundError
+                      message:
+                        type: string
+                        example: User not found
+
   /certificates:
     post:
       summary: Create a new certificate

@@ -7,11 +7,14 @@ import {Users} from '../models';
 import {UserRepository} from '../repositories';
 import {HttpErrors} from '@loopback/rest';
 import {repository} from '@loopback/repository';
+import {UserGroupRepository} from '../repositories';
 
 export class UserController {
   constructor(
     @repository(UserRepository)
     private usersRepository: UserRepository,
+    @repository(UserGroupRepository)
+    private userGroupRepository: UserGroupRepository,
   ) {}
 
   @post('/users', {
@@ -183,5 +186,93 @@ export class UserController {
       status: 'inactive',
       updatedAt: new Date(),
     });
+  }
+
+  /**
+   * Get groups for a user
+   * @param userId - User ID (must be a valid UUID)
+   * @returns Array of group names
+   * @throws {HttpErrors.BadRequest} If the userId is not a valid UUID
+   * @throws {HttpErrors.NotFound} If the user does not exist
+   */
+  @get('/users/{userId}/groups', {
+    responses: {
+      '200': {
+        description: 'Array of group names',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+            },
+          },
+        },
+      },
+      '400': {
+        description: 'Invalid user ID format',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                error: {
+                  type: 'object',
+                  properties: {
+                    statusCode: {type: 'number', example: 400},
+                    name: {type: 'string', example: 'BadRequestError'},
+                    message: {type: 'string', example: 'Invalid user ID format. Expected a valid UUID.'},
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '404': {
+        description: 'User not found',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                error: {
+                  type: 'object',
+                  properties: {
+                    statusCode: {type: 'number', example: 404},
+                    name: {type: 'string', example: 'NotFoundError'},
+                    message: {type: 'string', example: 'User not found'},
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  async getUserGroups(
+    @param.path.string('userId') userId: string,
+  ): Promise<string[]> {
+    // Validate userId is a valid UUID
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      throw new HttpErrors.BadRequest('Invalid user ID format. Expected a valid UUID.');
+    }
+
+    // Check if the user exists
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new HttpErrors.NotFound('User not found');
+    }
+
+    // Find all user-group entries for this user, selecting only the groupName field
+    const userGroups = await this.userGroupRepository.find({
+      where: { userId },
+      fields: ['groupName']
+    });
+
+    // Return just the group names
+    return userGroups.map(ug => ug.groupName);
   }
 } 
