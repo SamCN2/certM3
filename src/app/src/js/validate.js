@@ -44,12 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = '';
       }
 
-      const response = await fetch('/app/validate', {
-        method: 'POST',
+      // Use the same endpoint format for both direct and manual validation
+      const endpoint = `/app/validate/${requestId}/${challenge}`;
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ requestId, challenge })
+        }
       });
 
       const data = await response.json();

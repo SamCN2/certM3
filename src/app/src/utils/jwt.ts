@@ -2,18 +2,16 @@ import jwt from 'jsonwebtoken';
 
 // In production, this should be in an environment variable
 const JWT_SECRET = 'certm3-jwt-secret-key';
-const TOKEN_EXPIRY = '30m'; // 30 minutes
+const TOKEN_EXPIRY = '5m'; // 5 minutes
 
 export interface ValidationTokenPayload {
   requestId: string;
-  username: string;
   purpose: 'user_creation';
 }
 
-export function generateValidationToken(requestId: string, username: string): string {
+export function generateValidationToken(requestId: string): string {
   const payload: ValidationTokenPayload = {
     requestId,
-    username,
     purpose: 'user_creation'
   };
 
