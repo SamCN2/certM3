@@ -1,0 +1,931 @@
+openapi: 3.0.0
+info:
+  title: CertM3 API
+  version: 1.0.0
+  description: Loopback 4 API for CertM3
+  contact:
+    name: ogt11.com/llc
+servers:
+  - url: https://urp.ogt11.com/api
+paths:
+  /api/ping:
+    get:
+      x-controller-name: PingController
+      x-operation-name: ping
+      tags:
+        - PingController
+      responses:
+        '200':
+          description: Ping Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+      operationId: PingController.ping
+  /certificates/{id}/revoke:
+    post:
+      x-controller-name: CertificateController
+      x-operation-name: revoke
+      tags:
+        - CertificateController
+      responses:
+        '204':
+          description: Certificate revocation success
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - revokedBy
+                - revocationReason
+              properties:
+                revokedBy:
+                  type: string
+                revocationReason:
+                  type: string
+        x-parameter-index: 1
+      operationId: CertificateController.revoke
+  /certificates/{id}:
+    patch:
+      x-controller-name: CertificateController
+      x-operation-name: updateById
+      tags:
+        - CertificateController
+      responses:
+        '204':
+          description: Certificate PATCH success
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                codeVersion:
+                  type: string
+                commonName:
+                  type: string
+                email:
+                  type: string
+                notBefore:
+                  type: string
+                  format: date-time
+                notAfter:
+                  type: string
+                  format: date-time
+        x-parameter-index: 1
+      operationId: CertificateController.updateById
+    get:
+      x-controller-name: CertificateController
+      x-operation-name: findById
+      tags:
+        - CertificateController
+      responses:
+        '200':
+          description: Certificate model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: CertificateController.findById
+  /certificates:
+    post:
+      x-controller-name: CertificateController
+      x-operation-name: create
+      tags:
+        - CertificateController
+      responses:
+        '200':
+          description: Certificate model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - serialNumber
+                - codeVersion
+                - username
+                - commonName
+                - email
+                - fingerprint
+                - notBefore
+                - notAfter
+                - userId
+              properties:
+                serialNumber:
+                  type: string
+                codeVersion:
+                  type: string
+                username:
+                  type: string
+                commonName:
+                  type: string
+                email:
+                  type: string
+                fingerprint:
+                  type: string
+                notBefore:
+                  type: string
+                  format: date-time
+                notAfter:
+                  type: string
+                  format: date-time
+                userId:
+                  type: string
+      operationId: CertificateController.create
+    get:
+      x-controller-name: CertificateController
+      x-operation-name: find
+      tags:
+        - CertificateController
+      responses:
+        '200':
+          description: Array of Certificate model instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+      parameters:
+        - name: username
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      operationId: CertificateController.find
+  /groups/{name}/deactivate:
+    post:
+      x-controller-name: GroupController
+      x-operation-name: deactivate
+      tags:
+        - GroupController
+      responses:
+        '204':
+          description: Group deactivation success
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: GroupController.deactivate
+  /groups/{name}/members:
+    post:
+      x-controller-name: GroupController
+      x-operation-name: addMembers
+      tags:
+        - GroupController
+      responses:
+        '204':
+          description: Add members to group success
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userIds
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+                createdBy:
+                  type: string
+                updatedBy:
+                  type: string
+        x-parameter-index: 1
+      operationId: GroupController.addMembers
+    get:
+      x-controller-name: GroupController
+      x-operation-name: getMembers
+      tags:
+        - GroupController
+      responses:
+        '200':
+          description: Array of User model instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: GroupController.getMembers
+    delete:
+      x-controller-name: GroupController
+      x-operation-name: removeMembers
+      tags:
+        - GroupController
+      responses:
+        '204':
+          description: Remove members from group success
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userIds
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+        x-parameter-index: 1
+      operationId: GroupController.removeMembers
+  /groups/{name}:
+    patch:
+      x-controller-name: GroupController
+      x-operation-name: updateById
+      tags:
+        - GroupController
+      responses:
+        '204':
+          description: Group PATCH success
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                description:
+                  type: string
+        x-parameter-index: 1
+      operationId: GroupController.updateById
+    get:
+      x-controller-name: GroupController
+      x-operation-name: findById
+      tags:
+        - GroupController
+      responses:
+        '200':
+          description: Group model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+      parameters:
+        - name: name
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: GroupController.findById
+  /groups:
+    post:
+      x-controller-name: GroupController
+      x-operation-name: create
+      tags:
+        - GroupController
+      responses:
+        '200':
+          description: Group model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - displayName
+              properties:
+                name:
+                  type: string
+                displayName:
+                  type: string
+                description:
+                  type: string
+      operationId: GroupController.create
+    get:
+      x-controller-name: GroupController
+      x-operation-name: find
+      tags:
+        - GroupController
+      responses:
+        '200':
+          description: Array of Group model instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+      operationId: GroupController.find
+  /request/check-username/{username}:
+    get:
+      x-controller-name: RequestController
+      x-operation-name: checkUsername
+      tags:
+        - RequestController
+      responses:
+        '200':
+          description: Username exists
+        '404':
+          description: Username is available
+      parameters:
+        - name: username
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: RequestController.checkUsername
+  /requests/search:
+    get:
+      x-controller-name: RequestController
+      x-operation-name: searchRequests
+      tags:
+        - RequestController
+      responses:
+        '200':
+          description: Array of Request model instances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestWithRelations'
+      parameters:
+        - name: username
+          in: query
+          schema:
+            type: string
+        - name: email
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      operationId: RequestController.searchRequests
+  /requests/{id}/cancel:
+    post:
+      x-controller-name: RequestController
+      x-operation-name: cancel
+      tags:
+        - RequestController
+      responses:
+        '204':
+          description: Request cancelled successfully
+        '400':
+          description: Invalid request state
+        '404':
+          description: Request not found
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: RequestController.cancel
+  /requests/{id}/validate:
+    post:
+      x-controller-name: RequestController
+      x-operation-name: validate
+      tags:
+        - RequestController
+      responses:
+        '204':
+          description: Request validated successfully
+        '400':
+          description: Invalid request state or challenge token
+        '404':
+          description: Request not found
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challenge
+              properties:
+                challenge:
+                  type: string
+        x-parameter-index: 1
+      operationId: RequestController.validate
+  /requests/{id}:
+    get:
+      x-controller-name: RequestController
+      x-operation-name: getRequest
+      tags:
+        - RequestController
+      responses:
+        '200':
+          description: Request model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestWithRelations'
+        '404':
+          description: Request not found
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: RequestController.getRequest
+  /requests:
+    post:
+      x-controller-name: RequestController
+      x-operation-name: createRequest
+      tags:
+        - RequestController
+      responses:
+        '200':
+          description: Request model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Request'
+        '409':
+          description: Request with this username already exists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRequest'
+      operationId: RequestController.createRequest
+  /users/{id}/deactivate:
+    post:
+      x-controller-name: UserController
+      x-operation-name: deactivate
+      tags:
+        - UserController
+      responses:
+        '204':
+          description: User deactivation success
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: UserController.deactivate
+  /users/{userId}/groups:
+    get:
+      x-controller-name: UserController
+      x-operation-name: getUserGroups
+      tags:
+        - UserController
+      responses:
+        '200':
+          description: Array of group names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '400':
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: number
+                        example: 400
+                      name:
+                        type: string
+                        example: BadRequestError
+                      message:
+                        type: string
+                        example: Invalid user ID format. Expected a valid UUID.
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: number
+                        example: 404
+                      name:
+                        type: string
+                        example: NotFoundError
+                      message:
+                        type: string
+                        example: User not found
+      parameters:
+        - name: userId
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: UserController.getUserGroups
+  /users/{id}:
+    patch:
+      x-controller-name: UserController
+      x-operation-name: updateById
+      tags:
+        - UserController
+      responses:
+        '204':
+          description: User PATCH success
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                email:
+                  type: string
+        x-parameter-index: 1
+      operationId: UserController.updateById
+    get:
+      x-controller-name: UserController
+      x-operation-name: findById
+      tags:
+        - UserController
+      responses:
+        '200':
+          description: User model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      operationId: UserController.findById
+  /users:
+    post:
+      x-controller-name: UserController
+      x-operation-name: create
+      tags:
+        - UserController
+      responses:
+        '200':
+          description: User model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      statusCode:
+                        type: number
+                        example: 409
+                      name:
+                        type: string
+                        example: ConflictError
+                      message:
+                        type: string
+                        example: Username already exists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - displayName
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                displayName:
+                  type: string
+      operationId: UserController.create
+    get:
+      x-controller-name: UserController
+      x-operation-name: find
+      tags:
+        - UserController
+      responses:
+        '200':
+          description: Array of User model instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      operationId: UserController.find
+components:
+  schemas:
+    Users:
+      title: Users
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - username
+        - email
+        - displayName
+        - status
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    Request:
+      title: Request
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+        challenge:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - username
+        - displayName
+        - email
+        - status
+        - challenge
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    NewRequest:
+      title: NewRequest
+      type: object
+      description: (tsType: Omit<Request, 'id' | 'status' | 'challenge' | 'createdAt' | 'updatedAt'>, schemaOptions: { title: 'NewRequest', exclude: [ 'id', 'status', 'challenge', 'createdAt', 'updatedAt' ] })
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        createdBy:
+          type: string
+        updatedBy:
+          type: string
+      required:
+        - username
+        - displayName
+        - email
+      additionalProperties: false
+      x-typescript-type: Omit<Request, 'id' | 'status' | 'challenge' | 'createdAt' | 'updatedAt'>
+    RequestWithRelations:
+      title: RequestWithRelations
+      type: object
+      description: (tsType: RequestWithRelations, schemaOptions: { includeRelations: true })
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+        challenge:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - username
+        - displayName
+        - email
+        - status
+        - challenge
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      x-typescript-type: RequestWithRelations
+    Group:
+      title: Group
+      type: object
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - name
+        - displayName
+        - status
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    Certificate:
+      title: Certificate
+      type: object
+      properties:
+        serialNumber:
+          type: string
+        codeVersion:
+          type: string
+        username:
+          type: string
+        userId:
+          type: string
+        commonName:
+          type: string
+        email:
+          type: string
+        fingerprint:
+          type: string
+        notBefore:
+          type: string
+          format: date-time
+        notAfter:
+          type: string
+          format: date-time
+        status:
+          type: string
+        revokedAt:
+          type: string
+          format: date-time
+        revokedBy:
+          type: string
+        revocationReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+      required:
+        - serialNumber
+        - codeVersion
+        - username
+        - userId
+        - commonName
+        - email
+        - fingerprint
+        - notBefore
+        - notAfter
+        - status
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    PingResponse:
+      type: object
+      title: PingResponse
+      properties:
+        greeting:
+          type: string
+        date:
+          type: string
+        url:
+          type: string
+        headers:
+          type: object
+          properties:
+            Content-Type:
+              type: string
+          additionalProperties: true 
