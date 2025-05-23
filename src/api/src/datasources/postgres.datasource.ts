@@ -13,7 +13,8 @@ const config = {
   database: 'certm3',
   schema: 'public',
   ssl: false,
-  debug: true,
+  transactionSupport: true,
+  isolationLevel: 'READ COMMITTED'
 };
 
 @lifeCycleObserver('datasource')

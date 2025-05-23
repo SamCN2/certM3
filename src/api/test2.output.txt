@@ -1,0 +1,55 @@
+> CertM3 API@1.0.0 test
+> mocha --require ts-node/register 'src/__tests__/**/*.ts'
+
+
+
+  API Endpoints
+    Group Membership Flow
+[2025-05-22T20:20:32.589Z] Generated test username: testuser670544
+[2025-05-22T20:20:32.589Z] Attempt: Create user with data: {"username":"testuser670544","email":"testuser670544@test.com","displayName":"Test User"}. Expect: 200 OK, user object with id, status 'active'.
+[2025-05-22T20:20:32.787Z] Created user with ID: a0b8770e-7351-4085-af7e-6c0e5f13694b
+[2025-05-22T20:20:32.787Z] Attempt: GET /api/users/a0b8770e-7351-4085-af7e-6c0e5f13694b. Expect: 200 OK, user object with status 'active'.
+[2025-05-22T20:20:32.863Z] Verified user is active
+[2025-05-22T20:20:32.863Z] Attempt: Create group with data: {"name":"testuser670544","displayName":"Test Group","description":"A test group","status":"active"}. Expect: 200 OK, group object with name, status 'active'.
+[2025-05-22T20:20:32.929Z] Created group: testuser670544
+[2025-05-22T20:20:32.930Z] Attempt: GET /api/groups/testuser670544. Expect: 200 OK, group object with status 'active'.
+[2025-05-22T20:20:33.024Z] Verified group is active
+[2025-05-22T20:20:33.024Z] Attempt: Add user a0b8770e-7351-4085-af7e-6c0e5f13694b to group 'users'. Expect: 204 No Content, user is member of 'users'.
+[2025-05-22T20:20:33.117Z] Attempt: Add user a0b8770e-7351-4085-af7e-6c0e5f13694b to group 'testuser670544'. Expect: 204 No Content, user is member of 'testuser670544'.
+[2025-05-22T20:20:33.138Z] Attempt: GET /api/groups/users/members. Expect: 200 OK, user a0b8770e-7351-4085-af7e-6c0e5f13694b present in group 'users'.
+[2025-05-22T20:20:33.189Z] Attempt: GET /api/groups/testuser670544/members. Expect: 200 OK, user a0b8770e-7351-4085-af7e-6c0e5f13694b present in group 'testuser670544'.
+[2025-05-22T20:20:33.212Z] Verified group memberships
+[2025-05-22T20:20:33.212Z] Performing final verification...
+[2025-05-22T20:20:33.251Z] Starting cleanup...
+
+Test failed! Try this curl command:
+curl -X DELETE http://localhost:3000/api/users/a0b8770e-7351-4085-af7e-6c0e5f13694b
+      1) completes the full group membership lifecycle
+
+
+  0 passing (2s)
+  1 failing
+
+  1) API Endpoints
+       Group Membership Flow
+         completes the full group membership lifecycle:
+     Error: expected 204 "No Content", got 404 "Not Found"
+      at Context.<anonymous> (src/__tests__/api.test.ts:254:12)
+      at processTicksAndRejections (node:internal/process/task_queues:105:5)
+  ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:267:14)
+      at /home/samcn2/src/certM3/src/api/node_modules/supertest/lib/test.js:323:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:300:13)
+      at Test.assert (node_modules/supertest/lib/test.js:179:23)
+      at localAssert (node_modules/supertest/lib/test.js:135:14)
+      at fn (node_modules/supertest/lib/test.js:140:7)
+      at Test.callback (node_modules/superagent/src/node/index.js:904:3)
+      at fn (node_modules/superagent/src/node/index.js:1170:18)
+      at IncomingMessage.<anonymous> (node_modules/superagent/src/node/parsers/json.js:19:7)
+      at IncomingMessage.emit (node:events:530:35)
+      at IncomingMessage.emit (node:domain:489:12)
+      at endReadableNT (node:internal/streams/readable:1698:12)
+      at processTicksAndRejections (node:internal/process/task_queues:90:21)
+
+
+

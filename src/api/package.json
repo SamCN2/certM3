@@ -21,11 +21,10 @@
     "prettier:fix": "npm run prettier:cli -- --write",
     "eslint": "lb-eslint --report-unused-disable-directives .",
     "eslint:fix": "npm run eslint -- --fix",
-    "pretest": "npm run rebuild",
-    "test": "mocha --require ts-node/register 'tests/**/*.ts'",
-    "test:watch": "mocha --require ts-node/register --watch 'tests/**/*.ts'",
-    "posttest": "npm run lint",
-    "test:dev": "lb-mocha --allow-console-logs dist/__tests__/**/*.js && npm run posttest",
+    "pretest": "pm2 restart api",
+    "test": "mocha --require ts-node/register 'src/__tests__/**/*.ts'",
+    "test:watch": "mocha --require ts-node/register --watch 'src/__tests__/**/*.ts'",
+    "test:dev": "lb-mocha --allow-console-logs dist/__tests__/**/*.js && npm run lint",
     "docker:build": "docker build -t certm3-api .",
     "docker:run": "docker run -p 3000:3000 -d certm3-api",
     "premigrate": "npm run build",
@@ -66,7 +65,7 @@
   "devDependencies": {
     "@loopback/build": "^9.0.0",
     "@loopback/eslint-config": "^15.0.5",
-    "@loopback/testlab": "^5.0.0",
+    "@loopback/testlab": "^5.0.10",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.19.100",
     "axios": "^1.9.0",
@@ -75,6 +74,7 @@
     "mocha": "^10.2.0",
     "prettier": "^2.8.8",
     "source-map-support": "^0.5.21",
+    "supertest": "^7.1.1",
     "ts-node": "^10.9.1",
     "typescript": "~4.9.5"
   }

@@ -2,9 +2,7 @@ import {AppDataSource} from './typeorm.config';
 
 AppDataSource.initialize()
   .then(async () => {
-    console.log('Running migrations...');
     await AppDataSource.runMigrations();
-    console.log('Migrations completed successfully');
     process.exit(0);
   })
   .catch(error => {

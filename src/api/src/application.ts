@@ -13,10 +13,7 @@ import {RestApplication} from '@loopback/rest';
 import {ServiceMixin} from '@loopback/service-proxy';
 import path from 'path';
 import {MySequence} from './sequence';
-import {UserRepository} from './repositories';
-import {CertificateRepository} from './repositories';
-import {RequestRepository} from './repositories';
-import {GroupRepository} from './repositories';
+import {UserRepository, CertificateRepository, RequestRepository, GroupRepository, UserGroupRepository} from './repositories';
 import {config} from './config';
 
 export {ApplicationConfig};
@@ -54,7 +51,7 @@ export class Certm3ApiApplication extends BootMixin(
       controllers: {
         // Customize ControllerBooter Conventions here
         dirs: ['controllers'],
-        extensions: ['.controller.js'],
+        extensions: ['.controller.js', '.controller.ts'],
         nested: true,
       },
     };
@@ -64,5 +61,6 @@ export class Certm3ApiApplication extends BootMixin(
     this.repository(CertificateRepository);
     this.repository(RequestRepository);
     this.repository(GroupRepository);
+    this.repository(UserGroupRepository);
   }
 }

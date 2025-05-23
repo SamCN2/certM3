@@ -2,9 +2,7 @@
  * Copyright 2025 ogt11.com, llc
  */
 
-import {Entity, model, property, belongsTo} from '@loopback/repository';
-import {Users} from './user.model';
-import {Group} from './group.model';
+import {Entity, model, property} from '@loopback/repository';
 
 @model({
   name: 'user_groups',
@@ -92,20 +90,7 @@ export class UserGroup extends Entity {
   })
   updatedBy?: string;
 
-  @belongsTo(() => Users, {name: 'user'}, {type: 'Users'})
-  user!: Users;
-
-  @belongsTo(() => Group, {name: 'group'}, {type: 'Group'})
-  group!: Group;
-
   constructor(data?: Partial<UserGroup>) {
     super(data);
   }
-}
-
-export interface UserGroupRelations {
-  user?: Users;
-  group?: Group;
-}
-
-export type UserGroupWithRelations = UserGroup & UserGroupRelations; 
+} 

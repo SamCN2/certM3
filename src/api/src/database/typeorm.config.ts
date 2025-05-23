@@ -15,7 +15,6 @@ export const AppDataSource = new DataSource({
   username: 'samcn2',
   database: 'certm3',
   synchronize: false,
-  logging: true,
   entities: [Certificate, Group, Request, Users, UserGroup],
   migrations: [
     CreateTables20240320000000,

@@ -1,0 +1,134 @@
+> CertM3 API@1.0.0 test
+> mocha --require ts-node/register 'src/__tests__/**/*.ts'
+
+
+
+  API Endpoints
+    Group Membership Flow
+[2025-05-22T20:15:00.628Z] Generated test username: testuser81472
+[2025-05-22T20:15:00.628Z] Attempt: Create user with data: {"username":"testuser81472","email":"testuser81472@test.com","displayName":"Test User"}. Expect: 200 OK, user object with id, status 'active'.
+[2025-05-22T20:15:00.833Z] Created user with ID: dacb9226-6210-491a-ad79-4d35cabe3b18
+[2025-05-22T20:15:00.833Z] Attempt: GET /api/users/dacb9226-6210-491a-ad79-4d35cabe3b18. Expect: 200 OK, user object with status 'active'.
+[2025-05-22T20:15:00.917Z] Verified user is active
+[2025-05-22T20:15:00.917Z] Attempt: Create group with data: {"name":"testuser81472","displayName":"Test Group","description":"A test group","status":"active"}. Expect: 200 OK, group object with name, status 'active'.
+[2025-05-22T20:15:00.981Z] Created group: testuser81472
+[2025-05-22T20:15:00.981Z] Attempt: GET /api/groups/testuser81472. Expect: 200 OK, group object with status 'active'.
+[2025-05-22T20:15:01.026Z] Verified group is active
+[2025-05-22T20:15:01.027Z] Attempt: Add user dacb9226-6210-491a-ad79-4d35cabe3b18 to group 'users'. Expect: 204 No Content, user is member of 'users'.
+[2025-05-22T20:15:01.126Z] Attempt: Add user dacb9226-6210-491a-ad79-4d35cabe3b18 to group 'testuser81472'. Expect: 204 No Content, user is member of 'testuser81472'.
+[2025-05-22T20:15:01.149Z] Attempt: GET /api/groups/users/members. Expect: 200 OK, user dacb9226-6210-491a-ad79-4d35cabe3b18 present in group 'users'.
+[2025-05-22T20:15:01.199Z] Attempt: GET /api/groups/testuser81472/members. Expect: 200 OK, user dacb9226-6210-491a-ad79-4d35cabe3b18 present in group 'testuser81472'.
+[2025-05-22T20:15:01.217Z] Verified group memberships
+[2025-05-22T20:15:01.217Z] Performing final verification...
+[2025-05-22T20:15:01.287Z] Final verification completed
+[2025-05-22T20:15:01.287Z] Starting cleanup...
+[2025-05-22T20:15:01.287Z] Attempting to verify group removal prevention...
+[2025-05-22T20:15:01.373Z] Successfully verified group removal prevention for test group
+[2025-05-22T20:15:01.387Z] Successfully verified group removal prevention for users group
+[2025-05-22T20:15:01.387Z] Attempting to mark group as inactive: testuser81472
+[2025-05-22T20:15:01.430Z] Successfully marked group as inactive: testuser81472
+[2025-05-22T20:15:01.430Z] Attempting to mark user as inactive: dacb9226-6210-491a-ad79-4d35cabe3b18
+[2025-05-22T20:15:01.452Z] Warning: Failed to mark user as inactive: expected 204 "No Content", got 404 "Not Found"
+[2025-05-22T20:15:01.452Z] Cleanup completed
+[2025-05-22T20:15:01.452Z] Performing post-cleanup verification...
+[2025-05-22T20:15:01.468Z] Warning: Failed to verify user inactive status: expected 'active' to be 'inactive'
+[2025-05-22T20:15:01.482Z] Warning: Failed to verify group inactive status: expected 'active' to be 'inactive'
+[2025-05-22T20:15:01.498Z] Warning: Failed to verify test group membership preservation: expected Array [
+  Object {
+    id: 'dacb9226-6210-491a-ad79-4d35cabe3b18',
+    username: 'testuser81472',
+    email: 'testuser81472@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  }
+] to contain Object {
+  id: 'dacb9226-6210-491a-ad79-4d35cabe3b18',
+  username: 'testuser81472',
+  email: 'testuser81472@test.com',
+  displayName: 'Test User',
+  status: 'inactive'
+}
+[2025-05-22T20:15:01.516Z] Warning: Failed to verify users group membership preservation: expected Array [
+  Object {
+    id: '2ab10383-29b7-4715-a573-20be164cc38b',
+    username: 'testuser284572',
+    email: 'testuser284572@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: '3c3263db-db77-4bf5-8483-ddcb7650aef9',
+    username: 'testuser707545',
+    email: 'testuser707545@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: '6e4a5430-55e5-4d6a-9ade-59c9cf38a223',
+    username: 'testuser455258',
+    email: 'testuser455258@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: '82bb69d4-6901-40db-ab13-b6c040c6d3db',
+    username: 'testuser79554',
+    email: 'testuser79554@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: '86a833d8-55ad-4ae2-8a98-2729b19b489b',
+    username: 'testuser109413',
+    email: 'testuser109413@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: 'c2134cdd-4a4b-40d6-83b0-63f87da45e49',
+    username: 'testuser99279',
+    email: 'testuser99279@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: 'c545f985-76dc-421e-b97b-1dda46025235',
+    username: 'testuser922287',
+    email: 'testuser922287@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: 'cbb02701-1d35-46ee-b073-c4c9d095788f',
+    username: 'testuser266',
+    email: 'testuser266@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: 'dacb9226-6210-491a-ad79-4d35cabe3b18',
+    username: 'testuser81472',
+    email: 'testuser81472@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  },
+  Object {
+    id: 'db540298-e075-42c8-97ba-18d010b91273',
+    username: 'testuser57210',
+    email: 'testuser57210@test.com',
+    displayName: 'Test User',
+    status: 'active'
+  }
+] to contain Object {
+  id: 'dacb9226-6210-491a-ad79-4d35cabe3b18',
+  username: 'testuser81472',
+  email: 'testuser81472@test.com',
+  displayName: 'Test User',
+  status: 'inactive'
+}
+[2025-05-22T20:15:01.517Z] Post-cleanup verification completed
+      ✔ completes the full group membership lifecycle (890ms)
+
+
+  1 passing (2s)
+
