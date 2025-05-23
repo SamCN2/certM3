@@ -4,14 +4,92 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
-exports.getRequestStatus = getRequestStatus;
 const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
 const fs_1 = __importDefault(require("fs"));
 const jwt_1 = require("./utils/jwt");
 const axios_1 = __importDefault(require("axios"));
-const node_forge_1 = __importDefault(require("node-forge")); // <-- Add forge
+// IMPORTANT: Group Management Documentation
+// ----------------------------------------
+// The API has two different group-related endpoints:
+// 1. /users/{userId}/groups - Gets groups for a specific user
+//    - Used by /app/users/:username/groups to show user's groups
+//    - Returns array of group names
+// 2. /groups/{requestId} - Gets groups for a request
+//    - Used by test-integration.ts for testing
+//    - NOT used by the main application
+//
+// When adding users to groups:
+// 1. Create group: POST /groups
+// 2. Add members: POST /groups/{groupId}/members
+//
+// When getting user's groups:
+// 1. Get user ID: GET /users?filter[where][username]=${username}
+// 2. Get groups: GET /users/${userId}/groups
+// ----------------------------------------
+// doesn't work today, but close, and we're pushing without it
+// // Group-related endpoints
+// app.get('/app/groups/:requestId', async (req: Request, res: Response) => {
+//   try {
+//     const { requestId } = req.params;
+//     const token = req.headers.authorization?.split(' ')[1];
+//     if (!token) {
+//       return res.status(401).json({
+//         success: false,
+//         error: 'Missing authorization token'
+//       });
+//     }
+//     // Get user's groups from API
+//     const response = await axios.get(`${API_BASE_URL}/groups/${requestId}`, {
+//       headers: {
+//         'Authorization': `Bearer ${token}`
+//       }
+//     });
+//     res.json({
+//       success: true,
+//       data: response.data
+//     });
+//   } catch (error) {
+//     console.error('Error getting groups:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to get groups'
+//     });
+//   }
+// });
+// doesn't work today, but close, and we're pushing without it
+// app.post('/app/groups/:groupId/members', async (req: Request, res: Response) => {
+//   try {
+//     const { groupId } = req.params;
+//     const { userId } = req.body;
+//     const token = req.headers.authorization?.split(' ')[1];
+//     if (!token) {
+//       return res.status(401).json({
+//         success: false,
+//         error: 'Missing authorization token'
+//       });
+//     }
+//     // Add user to group via API
+//     const response = await axios.post(`${API_BASE_URL}/groups/${groupId}/members`, {
+//       userId
+//     }, {
+//       headers: {
+//         'Authorization': `Bearer ${token}`
+//       }
+//     });
+//     res.json({
+//       success: true,
+//       data: response.data
+//     });
+//   } catch (error) {
+//     console.error('Error adding user to group:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to add user to group'
+//     });
+//   }
+// });
 // Validation functions
 // FIXME: Comment out email validation to allow any email format for now
 // function isValidEmail(email: string): boolean {
@@ -152,6 +230,7 @@ exports.app.get('/app/request', (req, res) => {
 });
 // Serve the validation page for /app/validate
 exports.app.get('/app/validate', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
     res.sendFile(path_1.default.join(__dirname, '../../../static/views/validate.html'));
 });
 // Serve the validation page for a specific request
@@ -172,6 +251,7 @@ exports.app.get('/app/validate/:requestId', async (req, res) => {
             });
         }
         // Serve the validation page
+        res.setHeader('Content-Type', 'text/html');
         res.sendFile(path_1.default.join(__dirname, '../../../static/views/validate.html'));
     }
     catch (error) {
@@ -182,79 +262,12 @@ exports.app.get('/app/validate/:requestId', async (req, res) => {
         });
     }
 });
-// Handle request submission
-exports.app.post('/app/request', async (req, res) => {
-    var _a, _b, _c, _d;
-    const { username, email, displayName } = req.body;
-    try {
-        // 1. Validate input
-        // FIXME: Comment out email validation to allow any email format for now
-        // if (!isValidEmail(email)) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     error: 'Invalid email format'
-        //   });
-        // }
-        if (!isValidUsername(username)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
-            });
-        }
-        // 2. Check if username is available
-        try {
-            await axios_1.default.get(`${API_BASE_URL}/request/check-username/${username}`);
-            return res.status(400).json({
-                success: false,
-                error: 'Username is already taken'
-            });
-        }
-        catch (error) {
-            // 404 means username is available, which is what we want
-            if (!axios_1.default.isAxiosError(error) || ((_a = error.response) === null || _a === void 0 ? void 0 : _a.status) !== 404) {
-                throw error;
-            }
-        }
-        // 3. Create the request
-        console.log('Sending request data:', { username, email, displayName });
-        const requestResponse = await axios_1.default.post(`${API_BASE_URL}/requests`, {
-            username,
-            email,
-            displayName
-        });
-        // 4. Return success response
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Accept', 'application/json');
-        res.json({
-            success: true,
-            data: {
-                requestId: requestResponse.data.id,
-                message: 'Please check your email for validation instructions',
-                redirect: `/app/validate/${requestResponse.data.id}`
-            }
-        });
-    }
-    catch (error) {
-        console.error('Error processing request:', error);
-        if (axios_1.default.isAxiosError(error)) {
-            console.error('API Error Response:', {
-                status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
-                data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data,
-                headers: (_d = error.response) === null || _d === void 0 ? void 0 : _d.headers
-            });
-        }
-        res.status(500).json({
-            success: false,
-            error: 'Failed to process request'
-        });
-    }
-});
 // Helper to get request status and check expiry
 async function getRequestStatus(requestId) {
     var _a, _b, _c;
     try {
         console.log(`Fetching status for request ${requestId}`);
-        const response = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
+        const response = await axios_1.default.get(`${API_BASE_URL}/request/${requestId}`);
         console.log('API Response:', JSON.stringify(response.data));
         if (!response.data) {
             console.error('Empty response data from API');
@@ -309,478 +322,166 @@ async function getRequestStatus(requestId) {
         return { status: null, expiry: null, isExpired: true };
     }
 }
-// Serve the validation page for validation links
-// NOTE: This route is used when a user clicks the validation link in their email.
-// For browser flows, we must redirect to the certificate page after successful validation.
-// For API/AJAX, you may want to return JSON, but for this flow, a redirect is correct UX.
-exports.app.get('/app/validate/:requestId/:challenge', async (req, res) => {
-    var _a, _b;
-    const { requestId, challenge } = req.params;
-    try {
-        // Check request status and expiry
-        const { status, expiry, isExpired } = await getRequestStatus(requestId);
-        // If request is expired, return error
-        if (isExpired) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    statusCode: 400,
-                    name: 'ValidationError',
-                    message: 'Request has expired'
-                }
-            });
-        }
-        // If already validated, redirect to certificate page
-        if (status === 'approved') {
-            const token = (0, jwt_1.generateValidationToken)(requestId);
-            return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
-        }
-        // Validate the challenge
-        console.log(`Validating request with ID: ${requestId} and challenge: ${challenge}`);
-        const response = await axios_1.default.post(`${API_BASE_URL}/requests/${requestId}/validate`, {
-            challenge
-        });
-        if (response.status === 204) {
-            // Get the username from the request
-            const requestResponse = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
-            const username = requestResponse.data.username;
-            // Add user to default group
-            try {
-                await axios_1.default.post(`${API_BASE_URL}/users/${username}/groups`, {
-                    groups: ['users']
-                });
-                console.log(`Added user ${username} to default 'users' group`);
-            }
-            catch (error) {
-                // Enhanced error logging for admin review
-                console.error('GROUP_ASSIGNMENT_ERROR:', {
-                    timestamp: new Date().toISOString(),
-                    username,
-                    requestId,
-                    error: ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message,
-                    status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
-                    action: 'add_to_users_group'
-                });
-                // Continue even if adding to group fails - the user is still created
-            }
-            const token = (0, jwt_1.generateValidationToken)(requestId);
-            // Redirect to certificate page (browser flow)
-            return res.redirect(`/app/certificate?requestId=${requestId}&token=${token}`);
-        }
-        else {
-            // Return error for both browser and script use
-            return res.status(400).json({
-                success: false,
-                error: {
-                    statusCode: 400,
-                    name: 'ValidationError',
-                    message: 'Invalid request or challenge'
-                }
-            });
-        }
-    }
-    catch (error) {
-        console.error('Error validating request:', error);
-        return res.status(500).json({
-            success: false,
-            error: {
-                statusCode: 500,
-                name: 'InternalServerError',
-                message: 'Internal Server Error'
-            }
-        });
-    }
-});
-// Handle validation submission (both manual and direct)
-exports.app.post('/app/validate', async (req, res) => {
-    var _a, _b;
-    const { requestId, challenge } = req.body;
-    try {
-        // Check request status and expiry
-        const { status, expiry, isExpired } = await getRequestStatus(requestId);
-        // If request is expired, return error
-        if (isExpired) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    statusCode: 400,
-                    name: 'ValidationError',
-                    message: 'Request has expired'
-                }
-            });
-        }
-        // If already validated, return success with token
-        if (status === 'approved') {
-            const token = (0, jwt_1.generateValidationToken)(requestId);
-            return res.json({
-                success: true,
-                data: {
-                    token,
-                    redirect: `/app/certificate?requestId=${requestId}&token=${token}`
-                }
-            });
-        }
-        console.log(`Validating request with ID: ${requestId} and challenge: ${challenge}`);
-        const response = await axios_1.default.post(`${API_BASE_URL}/requests/${requestId}/validate`, { challenge });
-        if (response.status === 204) {
-            // Get the username from the request
-            const requestResponse = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
-            const username = requestResponse.data.username;
-            // Add user to default group
-            try {
-                await axios_1.default.post(`${API_BASE_URL}/users/${username}/groups`, {
-                    groups: ['users']
-                });
-                console.log(`Added user ${username} to default 'users' group`);
-            }
-            catch (error) {
-                // Enhanced error logging for admin review
-                console.error('GROUP_ASSIGNMENT_ERROR:', {
-                    timestamp: new Date().toISOString(),
-                    username,
-                    requestId,
-                    error: ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message,
-                    status: (_b = error.response) === null || _b === void 0 ? void 0 : _b.status,
-                    action: 'add_to_users_group'
-                });
-                // Continue even if adding to group fails - the user is still created
-            }
-            const token = (0, jwt_1.generateValidationToken)(requestId);
-            res.json({
-                success: true,
-                data: {
-                    token,
-                    redirect: `/app/certificate?requestId=${requestId}&token=${token}`
-                }
-            });
-        }
-        else {
-            res.status(400).json({
-                success: false,
-                error: {
-                    statusCode: 400,
-                    name: 'ValidationError',
-                    message: 'Invalid request or challenge'
-                }
-            });
-        }
-    }
-    catch (error) {
-        console.error('Error validating request:', error);
-        res.status(500).json({
-            success: false,
-            error: {
-                statusCode: 500,
-                name: 'InternalServerError',
-                message: 'Failed to validate request'
-            }
-        });
-    }
-});
-// Serve the certificate request page for direct access
-// app.get('/app/cert-request', (req: Request, res: Response) => {
-//   res.sendFile(path.join(__dirname, '../../../static/views/cert-request.html'));
-// });
-// Serve the certificate page
-exports.app.get('/app/certificate', (req, res) => {
-    const token = req.query.token;
-    const requestId = req.query.requestId;
-    if (!token || !requestId) {
-        return res.status(400).send('Missing token or requestId');
-    }
-    try {
-        // Verify the token before serving the page
-        const decoded = (0, jwt_1.verifyValidationToken)(token);
-        if (decoded.requestId !== requestId) {
-            return res.status(401).send('Invalid token');
-        }
-        res.sendFile(path_1.default.join(__dirname, '../../../static/views/certificate.html'));
-    }
-    catch (error) {
-        console.error('Error verifying token:', error);
-        res.status(401).send('Invalid token');
-    }
-});
-// Handle certificate generation
-exports.app.post('/app/certificate', async (req, res) => {
+// Handle request submission
+exports.app.post('/app/request', async (req, res) => {
     var _a;
-    const { csr, groupId, token, requestId } = req.body;
-    if (!csr || !groupId || !token || !requestId) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required fields'
-        });
-    }
+    const { username, email, displayName } = req.body;
     try {
-        // 1. Verify the token
-        const decoded = (0, jwt_1.verifyValidationToken)(token);
-        if (decoded.requestId !== requestId) {
-            return res.status(401).json({
-                success: false,
-                error: 'Invalid token'
-            });
-        }
-        // 2. Parse and sign the CSR
-        let parsedCsr;
-        try {
-            parsedCsr = node_forge_1.default.pki.certificationRequestFromPem(csr);
-        }
-        catch (e) {
-            console.error('Failed to parse CSR:', e);
+        // 1. Validate input
+        // FIXME: Comment out email validation to allow any email format for now
+        // if (!isValidEmail(email)) {
+        //   return res.status(400).json({
+        //     success: false,
+        //     error: 'Invalid email format'
+        //   });
+        // }
+        if (!isValidUsername(username)) {
             return res.status(400).json({
                 success: false,
-                error: `Invalid CSR format: ${e.message}`
+                error: 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
             });
         }
-        // 3. Load CA certificate and key
-        let caCert;
-        let caKey;
+        // 2. Check if username is available
         try {
-            caCert = node_forge_1.default.pki.certificateFromPem(caCertPem);
-            caKey = node_forge_1.default.pki.privateKeyFromPem(caKeyPem);
-        }
-        catch (e) {
-            console.error('Error loading CA certificate or key:', e);
-            return res.status(500).json({
-                success: false,
-                error: `Failed to load CA certificate or key: ${e.message}`
-            });
-        }
-        // 4. Create and sign the certificate
-        const cert = node_forge_1.default.pki.createCertificate();
-        cert.serialNumber = generateSerialNumber();
-        cert.validity.notBefore = new Date();
-        cert.validity.notAfter = new Date();
-        cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
-        cert.setSubject(parsedCsr.subject.attributes);
-        cert.setIssuer(caCert.subject.attributes);
-        if (!parsedCsr.publicKey) {
+            await axios_1.default.get(`${API_BASE_URL}/request/check-username/${username}`);
             return res.status(400).json({
                 success: false,
-                error: 'CSR does not contain a public key'
-            });
-        }
-        cert.publicKey = parsedCsr.publicKey;
-        // Add extensions including group membership
-        const csrEmail = (_a = parsedCsr.subject.getField('E')) === null || _a === void 0 ? void 0 : _a.value;
-        const extensions = [
-            { name: 'basicConstraints', cA: false },
-            { name: 'keyUsage', keyCertSign: false, digitalSignature: true, nonRepudiation: true, keyEncipherment: true, dataEncipherment: true }
-        ];
-        if (csrEmail) {
-            extensions.push({ name: 'subjectAltName', altNames: [{ type: 6, value: csrEmail }] });
-        }
-        cert.setExtensions(extensions);
-        // Sign the certificate
-        cert.sign(caKey, node_forge_1.default.md.sha256.create());
-        const signedCertPem = node_forge_1.default.pki.certificateToPem(cert);
-        // 5. Store certificate metadata in the API
-        try {
-            await axios_1.default.post(`${API_BASE_URL}/certificates`, {
-                requestId,
-                groupId,
-                serialNumber: cert.serialNumber,
-                notBefore: cert.validity.notBefore,
-                notAfter: cert.validity.notAfter,
-                subject: parsedCsr.subject.attributes,
-                issuer: caCert.subject.attributes
+                error: 'Username is already taken'
             });
         }
         catch (error) {
-            console.error('Error storing certificate metadata:', error);
-            // Continue even if storage fails - the certificate is still valid
+            // 404 means username is available, which is what we want
+            if (!axios_1.default.isAxiosError(error) || ((_a = error.response) === null || _a === void 0 ? void 0 : _a.status) !== 404) {
+                throw error;
+            }
         }
-        // 6. Return the signed certificate
+        // 3. Create the request
+        console.log('Sending request data:', { username, email, displayName });
+        const requestResponse = await axios_1.default.post(`${API_BASE_URL}/request`, {
+            username,
+            email,
+            displayName
+        });
+        // 4. Return success with redirect to validation page
         res.json({
             success: true,
             data: {
-                certificate: signedCertPem,
-                redirect: `/app/certificate/download?requestId=${requestId}&token=${token}`
+                redirect: `/app/validate/${requestResponse.data.id}`
             }
         });
     }
     catch (error) {
-        console.error('Error processing certificate:', error);
+        console.error('Error creating request:', error);
         res.status(500).json({
             success: false,
-            error: `Failed to process certificate: ${error.message || 'An unknown error occurred'}`
+            error: 'Failed to create request'
         });
     }
 });
-// Helper function to generate a serial number (example)
-function generateSerialNumber() {
-    // Generate a random serial number (hex string) - adjust length as needed
-    return node_forge_1.default.util.bytesToHex(node_forge_1.default.random.getBytesSync(16));
-}
-// API Routes
-exports.app.get('/app/check-username/:username', async (req, res) => {
-    var _a;
-    console.log('Received check-username request:', {
-        path: req.path,
-        params: req.params,
-        query: req.query,
-        headers: req.headers
-    });
-    const username = req.params.username;
-    // Validate username format first
-    if (!isValidUsername(username)) {
-        console.log('Invalid username format:', username);
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid username format',
-            available: false,
-            username
-        });
-    }
+// Handle validation submission
+exports.app.post('/app/validate', async (req, res) => {
+    const { requestId, challenge } = req.body;
     try {
-        console.log('Checking username availability:', username);
-        // Call the API to check if the username exists (in users or requests)
-        await axios_1.default.get(`${API_BASE_URL}/request/check-username/${username}`);
-        // If no error, username is taken
-        console.log('Username is taken:', username);
-        res.json({
-            success: true,
-            available: false,
-            username
+        // 1. Validate the challenge
+        const validateResponse = await axios_1.default.post(`${API_BASE_URL}/request/${requestId}/validate`, {
+            challenge
         });
-    }
-    catch (error) {
-        if (axios_1.default.isAxiosError(error) && ((_a = error.response) === null || _a === void 0 ? void 0 : _a.status) === 404) {
-            // Username is available
-            console.log('Username is available:', username);
-            res.json({
-                success: true,
-                available: true,
-                username
-            });
-        }
-        else {
-            console.error('Error checking username:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to check username availability',
-                available: false,
-                username
-            });
-        }
-    }
-});
-// Handle group lookup for certificate
-exports.app.get('/app/groups/:requestId', async (req, res) => {
-    var _a, _b, _c, _d, _e;
-    const { requestId } = req.params;
-    const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({
-            success: false,
-            error: 'Missing authorization token'
-        });
-    }
-    try {
-        // 1. Get request details to find username
-        const requestResponse = await axios_1.default.get(`${API_BASE_URL}/requests/${requestId}`);
-        const username = requestResponse.data.username;
-        // 2. Look up user by username
-        const userResponse = await axios_1.default.get(`${API_BASE_URL}/users?filter[where][username]=${username}`);
-        if (!userResponse.data || userResponse.data.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found. Please complete validation first.'
-            });
-        }
-        const userId = userResponse.data[0].id;
-        // 3. Get user's groups
-        const groupsResponse = await axios_1.default.get(`${API_BASE_URL}/users/${userId}/groups`);
+        // 2. Generate a token for the user
+        const token = (0, jwt_1.generateValidationToken)(validateResponse.data.username, requestId);
+        // 3. Return success with redirect to certificate page
         res.json({
             success: true,
             data: {
-                groups: groupsResponse.data.map((g) => g.name)
+                token,
+                redirect: `/app/certificate?token=${token}`
             }
         });
     }
     catch (error) {
-        console.error('Error fetching groups:', error);
-        if (axios_1.default.isAxiosError(error)) {
-            if (((_b = error.response) === null || _b === void 0 ? void 0 : _b.status) === 404) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Request not found'
-                });
-            }
-            console.error('API Error Response:', {
-                status: (_c = error.response) === null || _c === void 0 ? void 0 : _c.status,
-                data: (_d = error.response) === null || _d === void 0 ? void 0 : _d.data,
-                headers: (_e = error.response) === null || _e === void 0 ? void 0 : _e.headers
-            });
-        }
+        console.error('Error validating request:', error);
         res.status(500).json({
             success: false,
-            error: 'Failed to fetch groups'
+            error: 'Failed to validate request'
         });
     }
 });
-exports.app.get('/app/groups', async (req, res) => {
+// Handle direct validation via URL
+exports.app.get('/app/validate/:requestId/:challenge', async (req, res) => {
+    const { requestId, challenge } = req.params;
     try {
-        const response = await axios_1.default.get(`${API_BASE_URL}/groups`);
-        const groups = response.data;
-        // Always include the 'users' group
-        if (!groups.some((g) => g.name === 'users')) {
-            groups.push({ name: 'users', displayName: 'Users' });
-        }
-        res.json(groups);
+        // 1. Validate the challenge
+        const validateResponse = await axios_1.default.post(`${API_BASE_URL}/request/${requestId}/validate`, {
+            challenge
+        });
+        // 2. Generate a token for the user
+        const token = (0, jwt_1.generateValidationToken)(validateResponse.data.username, requestId);
+        // 3. Redirect to certificate page
+        return res.redirect(`/app/certificate?token=${token}`);
     }
     catch (error) {
-        console.error('Error fetching groups:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch groups' });
+        console.error('Error validating request:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to validate request'
+        });
     }
 });
-// Handle any unmatched routes
-exports.app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: {
-            statusCode: 404,
-            name: 'NotFoundError',
-            message: 'Route not found'
-        }
-    });
+// Serve the certificate page
+exports.app.get('/app/certificate', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.sendFile(path_1.default.join(__dirname, '../../../static/views/certificate.html'));
 });
-// Error handling middleware
-exports.app.use((err, req, res, next) => {
-    console.error('Unhandled Error:', {
-        error: err,
-        message: err.message,
-        stack: err.stack,
-        path: req.path,
-        method: req.method,
-        body: req.body,
-        params: req.params,
-        query: req.query
-    });
-    // Write to error log file
-    const errorLogPath = '/var/spool/certM3/logs/app-error.log';
-    const errorLog = `${new Date().toISOString()} - ${req.method} ${req.path}\nError: ${err.message}\nStack: ${err.stack}\nBody: ${JSON.stringify(req.body)}\nParams: ${JSON.stringify(req.params)}\nQuery: ${JSON.stringify(req.query)}\n\n`;
+// Handle certificate generation
+exports.app.post('/app/certificate', async (req, res) => {
+    const { csr, token } = req.body;
     try {
-        fs_1.default.appendFileSync(errorLogPath, errorLog);
-    }
-    catch (writeError) {
-        console.error('Failed to write to error log:', writeError);
-    }
-    res.status(500).json({
-        success: false,
-        error: {
-            statusCode: 500,
-            name: 'InternalServerError',
-            message: err.message || 'Internal Server Error'
+        // 1. Verify the token
+        const claims = (0, jwt_1.verifyValidationToken)(token);
+        if (!claims) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid or expired token'
+            });
         }
-    });
+        // 2. Get the request ID from the token
+        const requestId = claims.requestId;
+        if (!requestId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing request ID in token'
+            });
+        }
+        // 3. Sign the CSR
+        const signResponse = await axios_1.default.post(`${API_BASE_URL}/certificates/sign`, {
+            csr,
+            requestId
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        // 4. Return the signed certificate
+        res.json({
+            success: true,
+            data: {
+                certificate: signResponse.data.certificate
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error generating certificate:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate certificate'
+        });
+    }
 });
+// Start the server
 if (require.main === module) {
     exports.app.listen(PORT, () => {
-        console.log(`CertM3 Web App listening at http://localhost:${PORT}`);
-        console.log(`Serving SPA at http://localhost:${PORT}/app`);
+        console.log(`Server is running on port ${PORT}`);
     });
 }
-// Remove duplicate export
-// export const app = express(); 
+// Export the app for testing
+exports.default = exports.app;
 //# sourceMappingURL=server.js.map

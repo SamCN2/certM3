@@ -21,296 +21,345 @@ All endpoints return errors in a consistent format:
 {
   "error": {
     "statusCode": 400,
-    "name": "ErrorName",
-    "message": "Error message"
+    "name": "BadRequestError",
+    "message": "Error description"
   }
 }
 ```
-
-Common HTTP status codes:
-- 200: Success
-- 204: Success (no content)
-- 400: Bad Request
-- 403: Forbidden
-- 404: Not Found
-- 409: Conflict
-- 500: Internal Server Error
 
 ## Endpoints
 
 ### Users
 
 #### Create User
-- **POST** `/users`
-- **Request Body:**
-  ```json
-  {
-    "username": "string",
-    "email": "string",
-    "displayName": "string"
-  }
-  ```
-- **Response:** User object
-- **Error Codes:**
-  - 409: Username or email already exists
+```http
+POST /users
+```
+
+Request body:
+```json
+{
+  "username": "string",     // Required, unique
+  "email": "string",        // Required, unique, valid email format
+  "displayName": "string"   // Required, defaults to 'Unknown'
+}
+```
+
+Response: User object with auto-generated UUID and timestamps
 
 #### List Users
-- **GET** `/users`
-- **Query Parameters:**
-  - `status`: Filter by status (active/inactive)
-- **Response:** Array of User objects
+```http
+GET /users?status=active
+```
+
+Query parameters:
+- `status`: Filter by user status (active/inactive)
+
+Response: Array of User objects
 
 #### Get User by ID
-- **GET** `/users/{id}`
-- **Response:** User object
-- **Error Codes:**
-  - 404: User not found
+```http
+GET /users/{id}
+```
+
+Path parameters:
+- `id`: User UUID
+
+Response: User object
+
+#### Deactivate User
+```http
+POST /users/{id}/deactivate
+```
+
+Path parameters:
+- `id`: User UUID
+
+Response: 204 No Content
+
+Note: This will trigger automatic deactivation of the user's certificates.
 
 #### Get User Groups
-- **GET** `/users/{userId}/groups`
-- **Response:** Array of group names (strings)
-- **Note:** This endpoint returns a lightweight list of group names to avoid repeated calls to get group details.
+```http
+GET /users/{userId}/groups
+```
+
+Path parameters:
+- `userId`: User UUID
+
+Response: Array of group names
 
 ### Certificates
 
-#### Create Certificate
-- **POST** `/certificates`
-- **Request Body:**
-  ```json
-  {
-    "serialNumber": "uuid",
-    "codeVersion": "string",
-    "username": "string",
-    "userId": "uuid",
-    "commonName": "string",
-    "email": "string",
-    "fingerprint": "string",
-    "notBefore": "date-time",
-    "notAfter": "date-time"
-  }
-  ```
-- **Response:** Certificate object
-- **Error Codes:**
-  - 400: Invalid certificate dates (notBefore must be before notAfter)
-  - 409: Certificate with this fingerprint already exists
+#### Sign Certificate
+```http
+POST /certificates/sign
+```
+
+Request body:
+```json
+{
+  "userId": "uuid",         // Required
+  "username": "string",     // Required
+  "email": "string",        // Required, valid email format
+  "commonName": "string",   // Required
+  "groupNames": ["string"], // Required, array of group names
+  "notBefore": "string",    // Optional, ISO date
+  "notAfter": "string"      // Optional, ISO date
+}
+```
+
+Response:
+```json
+{
+  "certificate": "string"   // PEM format
+}
+```
+
+Note: Private keys are generated and stored only in the user's browser.
+
+#### Create Certificate Record
+```http
+POST /certificates
+```
+
+Request body:
+```json
+{
+  "serialNumber": "uuid",   // Auto-generated
+  "codeVersion": "string",  // Required, max length 50
+  "username": "string",     // Required
+  "userId": "uuid",         // Required
+  "commonName": "string",   // Required
+  "email": "string",        // Required, valid email format
+  "fingerprint": "string",  // Required, unique
+  "notBefore": "string",    // Required, ISO date
+  "notAfter": "string"      // Required, ISO date
+}
+```
+
+Response: Certificate object
 
 #### List Certificates
-- **GET** `/certificates`
-- **Query Parameters:**
-  - `status`: Filter by status (active/revoked)
-- **Response:** Array of Certificate objects
+```http
+GET /certificates?status=active
+```
+
+Query parameters:
+- `status`: Filter by certificate status (active/revoked)
+
+Response: Array of Certificate objects
 
 #### Get Certificate by ID
-- **GET** `/certificates/{id}`
-- **Response:** Certificate object
-- **Error Codes:**
-  - 404: Certificate not found
+```http
+GET /certificates/{id}
+```
+
+Path parameters:
+- `id`: Certificate UUID
+
+Response: Certificate object
 
 #### Update Certificate
-- **PATCH** `/certificates/{id}`
-- **Request Body:**
-  ```json
-  {
-    "codeVersion": "string",
-    "commonName": "string",
-    "email": "string",
-    "notBefore": "date-time",
-    "notAfter": "date-time"
-  }
-  ```
-- **Response:** 204 No Content
-- **Error Codes:**
-  - 400: Invalid certificate dates or certificate is revoked
-  - 404: Certificate not found
+```http
+PATCH /certificates/{id}
+```
+
+Path parameters:
+- `id`: Certificate UUID
+
+Request body:
+```json
+{
+  "codeVersion": "string",  // Optional
+  "commonName": "string",   // Optional
+  "email": "string",        // Optional, valid email format
+  "notBefore": "string",    // Optional, ISO date
+  "notAfter": "string"      // Optional, ISO date
+}
+```
+
+Response: 204 No Content
 
 #### Revoke Certificate
-- **POST** `/certificates/{id}/revoke`
-- **Request Body:**
-  ```json
-  {
-    "revokedBy": "string",
-    "revocationReason": "string"
-  }
-  ```
-- **Response:** 204 No Content
-- **Error Codes:**
-  - 400: Certificate is already revoked
-  - 404: Certificate not found
+```http
+POST /certificates/{id}/revoke
+```
+
+Path parameters:
+- `id`: Certificate UUID
+
+Request body:
+```json
+{
+  "revokedBy": "string",    // Required
+  "revocationReason": "string"  // Required
+}
+```
+
+Response: 204 No Content
 
 ### Groups
 
 #### Create Group
-- **POST** `/groups`
-- **Request Body:**
-  ```json
-  {
-    "name": "string",
-    "displayName": "string",
-    "description": "string"
-  }
-  ```
-- **Response:** Group object
-- **Error Codes:**
-  - 409: Group with this name already exists or cannot create users group
+```http
+POST /groups
+```
+
+Request body:
+```json
+{
+  "name": "string",         // Required, unique
+  "displayName": "string",  // Required
+  "description": "string"   // Optional
+}
+```
+
+Response: Group object
 
 #### List Groups
-- **GET** `/groups`
-- **Response:** Array of Group objects
+```http
+GET /groups
+```
 
-#### Get Group by ID
-- **GET** `/groups/{id}`
-- **Response:** Group object
-- **Error Codes:**
-  - 404: Group not found
+Response: Array of Group objects
+
+#### Get Group by Name
+```http
+GET /groups/{name}
+```
+
+Path parameters:
+- `name`: Group name
+
+Response: Group object
 
 #### Delete Group
-- **DELETE** `/groups/{id}`
-- **Response:** 204 No Content
-- **Error Codes:**
-  - 403: Cannot delete the users group
-  - 404: Group not found
+```http
+DELETE /groups/{name}
+```
+
+Path parameters:
+- `name`: Group name
+
+Response: 204 No Content
+
+Note: Cannot delete the 'users' group.
 
 #### Get Group Members
-- **GET** `/groups/{name}/members`
-- **Response:** Array of User objects
-- **Error Codes:**
-  - 404: Group not found
+```http
+GET /groups/{name}/members
+```
 
-#### Add Group Members
-- **POST** `/groups/{name}/members`
-- **Request Body:**
-  ```json
-  {
-    "userIds": ["uuid1", "uuid2"]
-  }
-  ```
-- **Response:** 204 No Content
+Path parameters:
+- `name`: Group name
 
-#### Remove Group Members
-- **DELETE** `/groups/{name}/members`
-- **Request Body:**
-  ```json
-  {
-    "userIds": ["uuid1", "uuid2"]
-  }
-  ```
-- **Response:** 204 No Content
+Response: Array of User objects
 
 ### Requests
 
 #### Create Request
-- **POST** `/requests`
-- **Request Body:**
-  ```json
-  {
-    "username": "string",
-    "displayName": "string",
-    "email": "string"
-  }
-  ```
-- **Response:** Request object
-- **Error Codes:**
-  - 409: Request with this username already exists
+```http
+POST /requests
+```
+
+Request body:
+```json
+{
+  "username": "string",     // Required
+  "displayName": "string",  // Required
+  "email": "string"         // Required, valid email format
+}
+```
+
+Response: Request object with auto-generated UUID and timestamps
+
+#### Get Request by ID
+```http
+GET /requests/{id}
+```
+
+Path parameters:
+- `id`: Request UUID
+
+Response: Request object
 
 #### Search Requests
-- **GET** `/requests/search`
-- **Query Parameters:**
-  - `status`: Filter by status (pending/approved/rejected)
-- **Response:** Array of Request objects
+```http
+GET /requests/search?status=pending
+```
+
+Query parameters:
+- `status`: Filter by request status (pending/approved/rejected)
+
+Response: Array of Request objects
 
 #### Validate Request
-- **POST** `/requests/{id}/validate`
-- **Request Body:**
-  ```json
-  {
-    "challenge": "string"
-  }
-  ```
-- **Response:** 204 No Content
-- **Error Codes:**
-  - 400: Invalid request state or challenge token
-  - 404: Request not found
+```http
+POST /requests/{id}/validate
+```
 
-### Health Check
+Path parameters:
+- `id`: Request UUID
 
-#### Ping
-- **GET** `/ping`
-- **Response:**
-  ```json
-  {
-    "greeting": "string",
-    "date": "date-time",
-    "url": "string",
-    "headers": {}
-  }
-  ```
-
-## Data Models
-
-### User
+Request body:
 ```json
 {
-  "id": "uuid",
-  "username": "string",
-  "email": "string",
-  "displayName": "string",
-  "status": "active|inactive",
-  "createdAt": "date-time",
-  "createdBy": "string",
-  "updatedAt": "date-time",
-  "updatedBy": "string"
+  "challenge": "string"     // Required
 }
 ```
 
-### Certificate
-```json
-{
-  "serialNumber": "uuid",
-  "codeVersion": "string",
-  "username": "string",
-  "userId": "uuid",
-  "commonName": "string",
-  "email": "string",
-  "fingerprint": "string",
-  "notBefore": "date-time",
-  "notAfter": "date-time",
-  "status": "active|revoked",
-  "revokedAt": "date-time",
-  "revokedBy": "string",
-  "revocationReason": "string",
-  "createdAt": "date-time",
-  "createdBy": "string",
-  "updatedAt": "date-time",
-  "updatedBy": "string"
-}
+Response: 204 No Content
+
+#### Cancel Request
+```http
+POST /requests/{id}/cancel
 ```
 
-### Group
-```json
-{
-  "name": "string",
-  "displayName": "string",
-  "description": "string",
-  "status": "active|inactive",
-  "createdAt": "date-time",
-  "createdBy": "string",
-  "updatedAt": "date-time",
-  "updatedBy": "string"
-}
-```
+Path parameters:
+- `id`: Request UUID
 
-### Request
-```json
-{
-  "id": "uuid",
-  "username": "string",
-  "displayName": "string",
-  "email": "string",
-  "status": "pending|approved|rejected",
-  "challenge": "string",
-  "createdAt": "date-time",
-  "createdBy": "string",
-  "updatedAt": "date-time",
-  "updatedBy": "string"
-}
-```
+Response: 204 No Content
+
+## Status Codes
+
+- 200: Success
+- 204: No Content
+- 400: Bad Request
+- 403: Forbidden
+- 404: Not Found
+- 409: Conflict
+- 500: Internal Server Error
+
+## Data Types
+
+### UUID
+All IDs are UUIDs (version 4) and are auto-generated by the database.
+
+### Timestamps
+All timestamps are in ISO 8601 format with timezone information.
+
+### Status Enums
+- User Status: `active`, `inactive`
+- Certificate Status: `active`, `revoked`
+- Request Status: `pending`, `approved`, `rejected`
+- Group Status: `active`, `inactive`
+
+## Constraints
+
+### Unique Fields
+- User: username, email
+- Group: name
+- Certificate: fingerprint
+
+### Required Fields
+All required fields are marked as such in the request/response schemas.
+
+### Default Values
+- User displayName: 'Unknown'
+- IDs: Auto-generated UUIDs
+- Timestamps: Current time for created_at/updated_at
+
+## Triggers
+
+The database includes a trigger that automatically deactivates a user's certificates when the user is deactivated.

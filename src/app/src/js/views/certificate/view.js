@@ -22,31 +22,23 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadGroups() {
     console.log('Loading groups...');
     try {
-      // Get token and requestId from URL
+      // Get token from URL
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
-      const requestId = urlParams.get('requestId');
-
-      if (!token || !requestId) {
-        throw new Error('Missing token or request ID');
+      if (!token) {
+        throw new Error('Missing token');
       }
 
-      // Get request details to get the username
-      const requestResponse = await fetch(`/app/request/${requestId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!requestResponse.ok) {
-        throw new Error('Failed to get request details');
+      // Decode JWT token to get username
+      const payload = token.split('.')[1];
+      const claims = JSON.parse(atob(payload));
+      const username = claims.username;
+      if (!username) {
+        throw new Error('Missing username in token');
       }
 
-      const requestData = await requestResponse.json();
-      const username = requestData.data.username;
-
-      // Get user's groups
-      const groupsResponse = await fetch(`/app/users/${username}/groups`, {
+      // Get user's groups using the token and username
+      const groupsResponse = await fetch(`/app/groups/${claims.requestId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -62,13 +54,30 @@ document.addEventListener('DOMContentLoaded', () => {
       // Clear existing options
       groupSelect.innerHTML = '';
       
+      // Add default option
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Select a group...';
+      groupSelect.appendChild(defaultOption);
+      
       // Add groups to dropdown
-      groups.forEach(group => {
-        const option = document.createElement('option');
-        option.value = group.name;
-        option.textContent = group.displayName;
-        groupSelect.appendChild(option);
-      });
+      if (groups && groups.length > 0) {
+        groups.forEach(group => {
+          const option = document.createElement('option');
+          option.value = group.name;
+          option.textContent = group.name;
+          groupSelect.appendChild(option);
+        });
+      } else {
+        const noGroupsOption = document.createElement('option');
+        noGroupsOption.value = '';
+        noGroupsOption.textContent = 'No groups available';
+        groupSelect.appendChild(noGroupsOption);
+      }
+
+      // Refresh Semantic UI dropdown
+      $(groupSelect).dropdown('refresh');
+      $(groupSelect).dropdown('clear');
 
       console.log('Groups loaded successfully:', groups);
     } catch (error) {
@@ -138,14 +147,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const passphrase = passphraseInput.value;
     const groupId = groupSelect.value;
 
-    // Get token and requestId from URL
+    // Get token from URL
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const requestId = urlParams.get('requestId');
-    const username = urlParams.get('username');
+    if (!token) {
+      errorMessage.textContent = 'Missing token';
+      errorMessage.style.display = 'block';
+      return;
+    }
 
-    if (!token || !requestId) {
-      errorMessage.textContent = 'Missing token or request ID';
+    // Decode JWT token to get username
+    const payload = token.split('.')[1];
+    const claims = JSON.parse(atob(payload));
+    const username = claims.username;
+    if (!username) {
+      errorMessage.textContent = 'Invalid token: missing username';
       errorMessage.style.display = 'block';
       return;
     }
@@ -190,8 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           csr: csr,
           groupId: groupId,
-          token: token,
-          requestId: requestId
+          token: token
         })
       });
       console.log('Server response received, status:', response.status);

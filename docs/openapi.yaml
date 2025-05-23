@@ -31,17 +31,17 @@ components:
         id:
           type: string
           format: uuid
-          description: Unique identifier for the user
+          description: Unique identifier for the user (auto-generated)
         username:
           type: string
           description: Unique username
         email:
           type: string
           format: email
-          description: User's email address
+          description: User's email address (unique)
         displayName:
           type: string
-          description: User's display name
+          description: User's display name (defaults to 'Unknown')
         status:
           type: string
           enum: [active, inactive]
@@ -80,9 +80,10 @@ components:
         serialNumber:
           type: string
           format: uuid
-          description: Unique serial number for the certificate
+          description: Unique serial number for the certificate (auto-generated)
         codeVersion:
           type: string
+          maxLength: 50
           description: Version of the code that generated the certificate
         username:
           type: string
@@ -100,7 +101,7 @@ components:
           description: Email address in the certificate
         fingerprint:
           type: string
-          description: Certificate fingerprint
+          description: Certificate fingerprint (unique)
         notBefore:
           type: string
           format: date-time
@@ -182,14 +183,13 @@ components:
         - displayName
         - email
         - status
-        - challenge
         - createdAt
         - updatedAt
       properties:
         id:
           type: string
           format: uuid
-          description: Unique identifier for the request
+          description: Unique identifier for the request (auto-generated)
         username:
           type: string
           description: Requested username
@@ -620,6 +620,85 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Certificate not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /certificates/sign:
+    post:
+      summary: Sign a certificate
+      description: Signs a certificate request with the provided user and group information
+      operationId: signCertificate
+      tags:
+        - Certificates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - username
+                - email
+                - commonName
+                - groupNames
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  description: ID of the user requesting the certificate
+                username:
+                  type: string
+                  description: Username for the certificate
+                email:
+                  type: string
+                  format: email
+                  description: Email address for the certificate
+                commonName:
+                  type: string
+                  description: Common name for the certificate
+                groupNames:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of group names the user belongs to
+                notBefore:
+                  type: string
+                  format: date-time
+                  description: Optional certificate validity start date
+                notAfter:
+                  type: string
+                  format: date-time
+                  description: Optional certificate validity end date
+      responses:
+        '200':
+          description: Certificate signed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - certificate
+                properties:
+                  certificate:
+                    type: string
+                    description: The signed certificate in PEM format
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: User not authorized to request certificate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User or group not found
           content:
             application/json:
               schema:
