@@ -5,6 +5,19 @@ info:
     API for managing certificates, users, groups, and certificate requests.
     This API provides endpoints for certificate lifecycle management, user management,
     group management, and certificate request processing.
+
+    Note: The /api prefix is added by nginx configuration. All endpoints are
+    accessible without the /api prefix in the controllers.
+
+    Special Endpoints:
+    - /request/check-username/{username}: This endpoint uses the singular form
+      to indicate it's a utility operation separate from the main request lifecycle.
+      It's called frequently during username input and may have different
+      optimization/rate-limiting requirements.
+
+    Test Coverage:
+    - /users/username/{username}: Covered by unit tests
+    - Other endpoints: Covered by integration tests
   version: 1.0.0
   contact:
     name: ogt11.com/llc
@@ -303,7 +316,7 @@ components:
           description: ID of the user who last updated this group membership
 
 paths:
-  /api/ping:
+  /ping:
     get:
       x-controller-name: PingController
       x-operation-name: ping
@@ -319,6 +332,105 @@ paths:
               schema:
                 $ref: '#/components/schemas/PingResponse'
       operationId: PingController.ping
+
+  /request/check-username/{username}:
+    get:
+      x-controller-name: RequestController
+      x-operation-name: checkUsername
+      tags:
+        - RequestController
+      summary: Check username availability
+      description: Checks if a username is available for registration
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Username to check
+      responses:
+        '200':
+          description: Username is available
+        '404':
+          description: Username is taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: RequestController.checkUsername
+
+  /requests/search:
+    get:
+      x-controller-name: RequestController
+      x-operation-name: search
+      tags:
+        - RequestController
+      summary: Search requests
+      description: Search for certificate requests with various criteria
+      responses:
+        '200':
+          description: Array of Request model instances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Request'
+      operationId: RequestController.search
+
+  /requests/{id}/cancel:
+    post:
+      x-controller-name: RequestController
+      x-operation-name: cancel
+      tags:
+        - RequestController
+      summary: Cancel a request
+      description: Cancels a certificate request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Request ID
+      responses:
+        '204':
+          description: Request cancellation success
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: RequestController.cancel
+
+  /users/{id}/deactivate:
+    post:
+      x-controller-name: UserController
+      x-operation-name: deactivate
+      tags:
+        - UserController
+      summary: Deactivate a user
+      description: Deactivates a user by their ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '204':
+          description: User deactivation success
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      operationId: UserController.deactivate
 
   /certificates/{id}/revoke:
     post:
@@ -1060,4 +1172,105 @@ paths:
             type: string
             enum: [active, inactive]
           description: Filter by status
-      operationId: UserController.find 
+      operationId: UserController.find
+
+  /users/username/{username}:
+    get:
+      summary: Get user by username
+      operationId: getUserByUsername
+      tags:
+        - users
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /users/{userId}:
+    patch:
+      x-controller-name: UserController
+      x-operation-name: updateById
+      tags:
+        - UserController
+      summary: Update a user
+      description: Updates a user's details by their ID
+      responses:
+        '204':
+          description: User PATCH success
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  description: User's display name
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                status:
+                  type: string
+                  enum: [active, inactive]
+                  description: User's status
+      operationId: UserController.updateById
+
+    get:
+      x-controller-name: UserController
+      x-operation-name: findById
+      tags:
+        - UserController
+      summary: Get a user
+      description: Retrieves a user by their ID
+      responses:
+        '200':
+          description: User model instance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      operationId: UserController.findById 

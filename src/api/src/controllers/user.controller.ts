@@ -2,7 +2,7 @@
  * Copyright 2025 ogt11.com, llc
  */
 
-import {post, param, requestBody, get, patch} from '@loopback/rest';
+import {post, param, requestBody, get, patch, response, getModelSchemaRef} from '@loopback/rest';
 import {Users} from '../models';
 import {UserRepository} from '../repositories';
 import {HttpErrors} from '@loopback/rest';
@@ -274,5 +274,26 @@ export class UserController {
 
     // Return just the group names
     return userGroups.map(ug => ug.groupName);
+  }
+
+  @get('/users/username/{username}')
+  @response(200, {
+    description: 'User model instance',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Users, {includeRelations: true}),
+      },
+    },
+  })
+  async getUserByUsername(
+    @param.path.string('username') username: string,
+  ): Promise<Users> {
+    const user = await this.usersRepository.findOne({
+      where: {username: username},
+    });
+    if (!user) {
+      throw new HttpErrors.NotFound(`User with username ${username} not found`);
+    }
+    return user;
   }
 } 
