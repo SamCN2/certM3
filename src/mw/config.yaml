@@ -1,0 +1,35 @@
+# Logging configuration
+log_level: info  # Global log level (debug, info, warn, error)
+log_file: /var/log/certM3/mw/app.log
+
+# App server configuration
+app_server:
+  listen_addr: ":8080"
+  socket_path: "/var/run/certM3/mw/app.sock"
+  backend_api_url: "https://urp.ogt11.com/api"
+  jwt_secret: ""  # Will be loaded from /var/spool/certM3/mw/JWT-secret
+  rate_limit_per_ip: 100
+  metrics_enabled: true
+  metrics_path: "/metrics"
+  metrics_timeout: 5s
+
+# Signer configuration
+signer:
+  socket_path: "/var/run/certM3/mw/signer.sock"
+  ca_cert_path: "/home/samcn2/src/certM3/CA/certs/ca-cert.pem"
+  ca_key_path: "/home/samcn2/src/certM3/CA/private/ca-key.pem"
+#  ca_cert_path: "/etc/certs/certM3/CA/certs/ca-cert.pem"
+#  ca_key_path: "/etc/certs/certM3/CA/private/ca-key.pem"
+  api_url: "https://urp.ogt11.com/api"
+  subject_ou: "CertM3 Test CA"
+  subject_o: "CertM3"
+  subject_l: "Test"
+  subject_st: "Test"
+  subject_c: "US"
+  cert_validity_days: 365
+  crl_distribution_url: "http://localhost:8080/crl"
+  aia_issuer_url: "http://localhost:8080/ca"
+  role_extension_oid: "1.3.6.1.4.1.10049.1.1"
+  username_extension_oid: "1.3.6.1.4.1.10049.1.2"
+  key_usage: ["digitalSignature", "keyEncipherment"]
+  extended_key_usage: ["serverAuth", "clientAuth"] 

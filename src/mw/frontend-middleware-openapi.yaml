@@ -1,0 +1,119 @@
+openapi: 3.0.0
+info:
+  title: CertM3 Middleware API
+  version: 1.0.0
+paths:
+  /app/initiate-request:
+    post:
+      summary: Initiate a certificate request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                displayName:
+                  type: string
+              required:
+                - email
+                - username
+                - displayName
+      responses:
+        '200':
+          description: Request initiated successfully
+        '400':
+          description: Bad request
+  /app/validate-email:
+    post:
+      summary: Validate email with challenge token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                requestId:
+                  type: string
+                challengeToken:
+                  type: string
+              required:
+                - requestId
+                - challengeToken
+      responses:
+        '200':
+          description: Email validated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwt:
+                    type: string
+        '400':
+          description: Bad request
+  /app/submit-csr:
+    post:
+      summary: Submit a CSR for signing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                csr:
+                  type: string
+              required:
+                - csr
+      responses:
+        '200':
+          description: CSR signed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  certificate:
+                    type: string
+        '401':
+          description: Unauthorized
+  /app/check-username/{username}:
+    get:
+      summary: Check username availability
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Username availability status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+  /app/health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

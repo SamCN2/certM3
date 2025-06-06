@@ -16,6 +16,7 @@ import {RequestRepository, UserRepository} from '../repositories';
 import {v4 as uuidv4} from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import {Users} from '../models/user.model';
 
 export class RequestController {
   constructor(
@@ -174,8 +175,18 @@ The certM3 Team
 
   @post('/requests/{id}/validate', {
     responses: {
-      '204': {
-        description: 'Request validated successfully',
+      '200': {
+        description: 'Request validated successfully and user created',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                userId: {type: 'string'},
+              },
+            },
+          },
+        },
       },
       '400': {
         description: 'Invalid request state or challenge token',
@@ -201,7 +212,7 @@ The certM3 Team
       },
     })
     data: {challenge: string},
-  ): Promise<void> {
+  ): Promise<{userId: string}> {
     const request = await this.requestRepository.findById(id);
     if (!request) {
       throw new HttpErrors.NotFound('Request not found');
@@ -215,10 +226,24 @@ The certM3 Team
       throw new HttpErrors.BadRequest('Invalid challenge');
     }
 
+    // Create the user
+    const user = await this.userRepository.create({
+      username: request.username,
+      email: request.email,
+      displayName: request.displayName,
+      status: 'active' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Omit<Users, 'id'>);
+
+    // Update request status
     await this.requestRepository.updateById(id, {
       status: 'approved',
       updatedAt: new Date(),
     });
+
+    // Return the user ID
+    return {userId: user.id};
   }
 
   @post('/requests/{id}/cancel', {

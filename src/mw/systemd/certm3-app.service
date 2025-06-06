@@ -1,0 +1,26 @@
+[Unit]
+Description=CertM3 Middleware App Server
+After=network.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=certm3
+Group=certm3
+WorkingDirectory=/opt/certm3/mw
+ExecStart=/opt/certm3/mw/bin/certm3-app
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/certm3/mw/app.log
+StandardError=append:/var/log/certm3/mw/app.error.log
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target 
