@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Certificate - CertM3</title>
+    <link rel="stylesheet" href="/static/css/semantic.min.css">
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <div class="ui container">
+        <div class="ui segment">
+            <h2 class="ui header">Generate Certificate</h2>
+            <form id="certificate-form" class="ui form">
+                <div class="field">
+                    <label>Select Group</label>
+                    <select name="group" class="ui fluid search dropdown">
+                        <option value="">Select a group...</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Passphrase</label>
+                    <div class="ui input">
+                        <input type="password" name="passphrase" placeholder="Enter a passphrase for your certificate">
+                    </div>
+                    <div class="ui progress" id="entropy-meter">
+                        <div class="bar">
+                            <div class="progress"></div>
+                        </div>
+                        <div class="label">0.0 bits of entropy</div>
+                    </div>
+                    <div class="ui info message">
+                        <p>Choose a passphrase that you can remember. The strength meter will help you ensure it's secure enough.</p>
+                    </div>
+                </div>
+                <button type="submit" class="ui primary button" disabled>
+                    <span class="button-text">Generate Certificate</span>
+                    <div class="ui mini active inline loader" style="display: none;"></div>
+                </button>
+            </form>
+            <div id="loading" class="ui active inverted dimmer" style="display: none;">
+                <div class="ui text loader">Generating Certificate...</div>
+            </div>
+            <div class="ui error message" style="display: none;"></div>
+            <div class="ui success message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load dependencies first -->
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/semantic.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+    
+    <!-- Load application code -->
+    <script src="/static/js/views/certificate/crypto.js?v=1"></script>
+    <script src="/static/js/views/certificate/view.js?v=1"></script>
+</body>
+</html> 
