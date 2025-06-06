@@ -1,0 +1,33 @@
+App Calls:
+GET /request/${requestId}
+GET /request/check-username/${username}
+POST /request
+POST /request/${requestId}/validate
+OpenAPI Spec: These endpoints are not defined in the spec
+Fix: Add these endpoints to the OpenAPI spec with proper request/response schemas
+Certificate Signing Endpoint Mismatch
+App Calls: POST /certificates/sign
+OpenAPI Spec: No certificate signing endpoint defined
+Fix: Add the certificate signing endpoint to the OpenAPI spec
+Response Format Mismatch
+App Expects: Direct response data (e.g., response.data.id, response.data.username)
+OpenAPI Spec: No response schemas defined for these endpoints
+Fix: Add proper response schemas to the OpenAPI spec
+Error Response Handling
+App Expects: 404 for username availability check
+OpenAPI Spec: No error responses documented
+Fix: Document all possible error responses in the OpenAPI spec
+Authentication
+App Uses: Bearer token for certificate signing
+OpenAPI Spec: No security schemes defined
+Fix: Add security schemes to the OpenAPI spec
+The fundamental issue is that the app is making calls to endpoints that aren't documented in the OpenAPI spec. This could lead to:
+Confusion about the actual API contract
+Difficulty in maintaining the API
+Potential breaking changes if the API is updated without considering these undocumented endpoints
+To fix this, you would need to:
+Add all missing endpoints to the OpenAPI spec
+Document the request/response schemas
+Document error responses
+Add security schemes
+Ensure the spec accurately reflects the actual API behavior

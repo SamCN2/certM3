@@ -1,0 +1,75 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir               = .
+certs             = $dir/certs
+crl_dir           = $dir/crl
+new_certs_dir     = $dir/newcerts
+database          = $dir/index.txt
+serial            = $dir/serial
+RANDFILE          = $dir/private/.rand
+
+private_key       = $dir/private/ca-key.pem
+certificate       = $dir/certs/ca-cert.pem
+
+crl               = $dir/crl/ca.crl
+crlnumber         = $dir/crlnumber
+crl_extensions    = crl_ext
+default_crl_days  = 30
+
+default_md        = sha384
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 365
+preserve         = no
+policy           = policy_strict
+
+[ policy_strict ]
+countryName             = match
+stateOrProvinceName     = match
+organizationName        = match
+organizationalUnitName  = optional
+commonName             = supplied
+emailAddress           = optional
+
+[ req ]
+default_bits        = 384
+default_keyfile     = private/ca-key.pem
+distinguished_name  = req_distinguished_name
+string_mask        = utf8only
+default_md         = sha384
+x509_extensions    = v3_ca
+
+[ req_distinguished_name ]
+countryName                     = Country Name (2 letter code)
+stateOrProvinceName            = State or Province Name
+localityName                   = Locality Name
+0.organizationName            = Organization Name
+organizationalUnitName        = Organizational Unit Name
+commonName                    = Common Name
+emailAddress                  = Email Address
+
+[ v3_ca ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+extendedKeyUsage = serverAuth, clientAuth, codeSigning, emailProtection
+
+[ v3_intermediate_ca ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+extendedKeyUsage = serverAuth, clientAuth, codeSigning, emailProtection
+
+[ usr_cert ]
+basicConstraints = CA:FALSE
+nsCertType = client, email
+nsComment = "OpenSSL Generated Client Certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth, emailProtection
+subjectAltName = email:move
