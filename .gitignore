@@ -6,7 +6,6 @@ yarn-debug.log*
 yarn-error.log*
  
 # devAI
-
 prompts/
 
 # Runtime data
@@ -70,3 +69,23 @@ typings/
 # Emacs auto-save file
 \#*#
 .aider*
+
+# Temporary directories
+save/
+deprecated/
+src/app.unused/
+src/testm3/
+
+# Build artifacts
+*.zip
+*.tar.gz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
