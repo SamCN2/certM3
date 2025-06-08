@@ -309,7 +309,12 @@ Request body:
 }
 ```
 
-Response: 204 No Content
+Response:
+```json
+{
+  "userId": "uuid-string"   // ID of the created user
+}
+```
 
 #### Cancel Request
 ```http

@@ -15,6 +15,7 @@ type Config struct {
 	// Logging configuration
 	LogLevel string `yaml:"log_level"`
 	LogFile  string `yaml:"log_file"`
+	Verbose  bool   `yaml:"verbose"`
 
 	// App server configuration
 	AppServer struct {
@@ -29,6 +30,7 @@ type Config struct {
 		MetricsEnabled bool          `yaml:"metrics_enabled"`
 		MetricsPath    string        `yaml:"metrics_path"`
 		MetricsTimeout time.Duration `yaml:"metrics_timeout"`
+		LogFile        string        `yaml:"log_file"`
 	} `yaml:"app_server"`
 
 	// Signer configuration
@@ -50,6 +52,7 @@ type Config struct {
 		KeyUsage              []string `yaml:"key_usage"`
 		ExtendedKeyUsage      []string `yaml:"extended_key_usage"`
 		APIURL                string   `yaml:"api_url"`
+		LogFile               string   `yaml:"log_file"`
 	}
 }
 
@@ -70,7 +73,13 @@ func Load(configPath string) (*Config, error) {
 		config.LogLevel = "info"
 	}
 	if config.LogFile == "" {
-		config.LogFile = "/var/log/certM3/mw/app.log"
+		config.LogFile = "/var/spool/certM3/logs/mw/app.log"
+	}
+	if config.AppServer.LogFile == "" {
+		config.AppServer.LogFile = "/var/spool/certM3/logs/mw/app.log"
+	}
+	if config.Signer.LogFile == "" {
+		config.Signer.LogFile = "/var/spool/certM3/logs/signer/signer.log"
 	}
 	if config.AppServer.ListenAddr == "" {
 		config.AppServer.ListenAddr = ":8080"

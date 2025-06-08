@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,9 +97,10 @@ func LoggingMiddleware(log *logging.Logger) mux.MiddlewareFunc {
 func AuthMiddleware(jwtManager *security.JWTManager, log *logging.Logger, metrics *metrics.Metrics) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip authentication for health check, metrics, initiate-request, and validate-email endpoints
+			// Skip authentication for health check, metrics, initiate-request, validate-email, and check-username endpoints
 			if r.URL.Path == "/health" || r.URL.Path == "/metrics" ||
-				r.URL.Path == "/app/initiate-request" || r.URL.Path == "/app/validate-email" {
+				r.URL.Path == "/app/initiate-request" || r.URL.Path == "/app/validate-email" ||
+				strings.HasPrefix(r.URL.Path, "/app/check-username/") {
 				next.ServeHTTP(w, r)
 				return
 			}

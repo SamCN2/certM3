@@ -19,6 +19,7 @@ import forge from 'node-forge';
 const useRaw = process.argv.includes('--raw');
 
 // Service base URLs
+const API_BASE_URL = useRaw ? 'http://localhost:3000' : 'https://urp.ogt11.com/api';
 const APP_BASE_URL = useRaw ? 'http://localhost:3001' : 'https://urp.ogt11.com';
 
 console.log(`Running tests in ${useRaw ? 'local development' : 'production'} mode`);
@@ -162,33 +163,19 @@ async function testValidation(requestId: string, isDirect: boolean, username: st
   console.log('✓ Validation email read');
   console.log('Challenge:', challenge);
   
-  if (isDirect) {
-    // Test direct validation link
-    const directValidateResponse = await axios.get(
-      `${APP_BASE_URL}/app/validate/${requestId}/${challenge}`
-    );
-    
-    if (!directValidateResponse.data.success || !directValidateResponse.data.data?.token) {
-      throw new Error('Direct validation failed');
-    }
-    console.log('✓ Direct validation successful');
-    console.log('Validation response:', directValidateResponse.data);
-    return directValidateResponse.data.data.token;
-  } else {
-    // Test manual validation
-    const manualValidateResponse = await axios.post(
-      `${APP_BASE_URL}/app/validate`,
-      { requestId, challenge },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-    
-    if (!manualValidateResponse.data.success || !manualValidateResponse.data.data?.token) {
-      throw new Error('Manual validation failed');
-    }
-    console.log('✓ Manual validation successful');
-    console.log('Validation response:', manualValidateResponse.data);
-    return manualValidateResponse.data.data.token;
+  // Test validation (both direct and manual use the same endpoint now)
+  const validateResponse = await axios.post(
+    `${APP_BASE_URL}/app/validate`,
+    { requestId, challenge },
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+  
+  if (!validateResponse.data.success || !validateResponse.data.data?.token) {
+    throw new Error('Validation failed');
   }
+  console.log('✓ Validation successful');
+  console.log('Validation response:', validateResponse.data);
+  return validateResponse.data.data.token;
 }
 
 // Add certificate parsing helper
@@ -207,7 +194,12 @@ async function testCertificateRequest(requestId: string, token: string, username
 
   // Get certificate page
   const certPageResponse = await axios.get(
-    `${APP_BASE_URL}/app/certificate?requestId=${requestId}&token=${token}`
+    `${APP_BASE_URL}/app/certificate?requestId=${requestId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    }
   );
   if (certPageResponse.status !== 200) {
     throw new Error('Failed to get certificate page');
@@ -217,8 +209,8 @@ async function testCertificateRequest(requestId: string, token: string, username
   // Generate and submit CSR
   const csr = generateCSR(username);
   const certResponse = await axios.post(
-    `${APP_BASE_URL}/app/cert-sign`,
-    { requestId, csr, password: 'test-password' },
+    `${APP_BASE_URL}/app/certificate`,
+    { requestId, csr, groupName: 'users' },
     {
       headers: {
         'Content-Type': 'application/json',
@@ -265,8 +257,8 @@ async function testCertificateSigningErrors(requestId: string, token: string) {
   // Invalid CSR
   try {
     await axios.post(
-      `${APP_BASE_URL}/app/cert-sign`,
-      { requestId, csr: 'INVALID_CSR', password: 'test-password' },
+      `${APP_BASE_URL}/app/certificate`,
+      { requestId, csr: 'INVALID_CSR', groupName: 'users' },
       {
         headers: {
           'Content-Type': 'application/json',
@@ -283,24 +275,23 @@ async function testCertificateSigningErrors(requestId: string, token: string) {
     }
   }
 
-  // Expired token
-  const csr = generateCSR('testuser_expiredtoken');
-  const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXF1ZXN0SWQiOiJmODlmOGNiNC1iY2FjLTQxMmYtYTRmZS0zNjgxYWQxZDhiYzciLCJwdXJwb3NlIjoidXNlcl9jcmVhdGlvbiIsImlhdCI6MTc0NzI1Njk3MCwiZXhwIjoxNzQ3MjU3MjcwfQ.6YRRhL5czL08PMU3XhYJEVHglA-9b2f3IGGrA0jzgGo';
+  // Invalid token
+  const csr = generateCSR('testuser_invalidtoken');
   try {
     await axios.post(
-      `${APP_BASE_URL}/app/cert-sign`,
-      { requestId, csr, password: 'test-password' },
+      `${APP_BASE_URL}/app/certificate`,
+      { requestId, csr, groupName: 'users' },
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${expiredToken}`
+          'Authorization': 'Bearer invalid-token'
         }
       }
     );
-    throw new Error('Should have rejected expired token');
+    throw new Error('Should have rejected invalid token');
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      console.log('✓ Expired token rejected for certificate signing');
+      console.log('✓ Invalid token rejected for certificate signing');
     } else {
       throw error;
     }

@@ -117,6 +117,7 @@ The Go application will be structured into logical packages:
 * Implement proper caching headers (e.g., Cache-Control, ETag).
 * Support for SPA: all non-asset/non-api routes should serve index.html.
 * middleware server should only serve JSON, front end app is SPA, which will load from index.html via nginx.
+* Frontend will use Vuetify 3 (Material Design) for UI components, chosen for its native Vue 3 support and comprehensive component library.
 
 4.2. JWT Authentication
 * Use a reputable Go JWT library (e.g., github.com/golang-jwt/jwt/v5).

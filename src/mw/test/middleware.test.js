@@ -162,6 +162,14 @@ describe('CertM3 Middleware Tests', () => {
     });
   });
 
+  describe('Username Check', () => {
+    test('/app/check-username/{username} - Check username availability', async () => {
+      const response = await api.get(`/app/check-username/${testUsername}`);
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveProperty('available');
+    });
+  });
+
   describe('Security Tests', () => {
     test('/app/submit-csr - Unauthorized CSR submission', async () => {
       console.log('Starting unauthorized test');

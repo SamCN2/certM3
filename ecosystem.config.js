@@ -4,6 +4,9 @@ module.exports = {
     script: 'src/api/dist/index.js',
     cwd: '.',
     watch: false,
+    env: {
+      NODE_ENV: 'development',
+    },
     env_production: {
       NODE_ENV: 'production',
     },
@@ -17,7 +20,7 @@ module.exports = {
   {
     name: 'app',
     script: 'npm',
-    args: 'run start', // Consider changing to 'npm run start' or similar for production builds
+    args: 'run start',
     cwd: 'src/app',
     watch: false,
     env: {
@@ -35,5 +38,18 @@ module.exports = {
     time: true,
     merge_logs: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+  },
+  {
+    name: 'testm3',
+    script: 'src/testm3/server.js',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3003
+    },
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    error_file: '/var/spool/certM3/logs/testm3-error.log',
+    out_file: '/var/spool/certM3/logs/testm3-out.log',
+    merge_logs: true,
+    max_memory_restart: '1G',
   }],
 }; 

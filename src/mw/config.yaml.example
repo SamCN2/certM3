@@ -1,32 +1,41 @@
 # Logging configuration
-log_level: info
-log_file: /var/log/certM3/mw/app.log
+log_level: "info"  # debug, info, warn, error
+log_file: "/var/spool/certM3/logs/mw/app.log"
+verbose: false  # Set to true for detailed logging
 
 # App server configuration
 app_server:
   listen_addr: ":8080"
-  socket_path: "/var/run/certM3/mw/app.sock"
-  backend_api_url: "https://urp.ogt11.com/api/"
-  jwt_secret: ""  # Will be loaded from /var/spool/certM3/mw/JWT-secret
+  socket_path: "/var/spool/certM3/mw/app.sock"
+  backend_api_url: "http://localhost:8081"
+  jwt_secret: "your-jwt-secret"
   rate_limit_per_ip: 100
   metrics_enabled: true
   metrics_path: "/metrics"
-  metrics_timeout: 5s
+  metrics_timeout: "5s"
+  log_file: "/var/spool/certM3/logs/mw/app.log"
 
 # Signer configuration
 signer:
-  socket_path: "/var/run/certM3/mw/signer.sock"
-  ca_cert_path: "/etc/certM3/ca/certs/ca-cert.pem"
-  ca_key_path: "/etc/certM3/ca/private/ca-key.pem"
-  subject_ou: "CertM3 Test CA"
-  subject_o: "CertM3"
-  subject_l: "Test"
-  subject_st: "Test"
-  subject_c: "US"
+  socket_path: "/var/spool/certM3/signer/signer.sock"
+  ca_cert_path: "/var/spool/certM3/CA/certs/ca-cert.pem"
+  ca_key_path: "/var/spool/certM3/CA/private/ca-key.pem"
+  private_key_password_var: "CA_KEY_PASSWORD"
+  subject_ou: "Your Organization Unit"
+  subject_o: "Your Organization"
+  subject_l: "Your Location"
+  subject_st: "Your State"
+  subject_c: "Your Country"
   cert_validity_days: 365
-  crl_distribution_url: "http://localhost:8080/crl"
-  aia_issuer_url: "http://localhost:8080/ca"
-  role_extension_oid: "1.3.6.1.4.1.12345.1.1"
-  key_usage: ["digitalSignature", "keyEncipherment"]
-  extended_key_usage: ["serverAuth", "clientAuth"]
-  api_url: "https://urp.ogt11.com/api/" 
+  crl_distribution_url: "http://your-crl-url"
+  aia_issuer_url: "http://your-aia-url"
+  role_extension_oid: "1.2.3.4.5.6.7.8.9.1"
+  username_extension_oid: "1.2.3.4.5.6.7.8.9.2"
+  key_usage:
+    - "Digital Signature"
+    - "Key Encipherment"
+  extended_key_usage:
+    - "TLS Web Server Authentication"
+    - "TLS Web Client Authentication"
+  api_url: "http://localhost:8080"
+  log_file: "/var/spool/certM3/logs/signer/signer.log" 

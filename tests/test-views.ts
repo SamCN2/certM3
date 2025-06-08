@@ -159,14 +159,19 @@ describe('View Flow Tests', () => {
       const requestId = requestResponse.data.data.requestId;
       
       // Validate the request
-      const validateResponse = await axios.post(`${BASE_URL}/app/validate/${requestId}`, {
-        email: 'test2@example.com'
+      const validateResponse = await axios.post(`${BASE_URL}/app/validate`, {
+        requestId,
+        challenge: 'test-challenge'
       });
       expect(validateResponse.data.success).to.be.true;
       const token = validateResponse.data.data.token;
       
       // Get the certificate page
-      const response = await axios.get(`${BASE_URL}/app/certificate?requestId=${requestId}&token=${token}`);
+      const response = await axios.get(`${BASE_URL}/app/certificate?requestId=${requestId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       expect(response.status).to.equal(200);
       
       // Parse the HTML
@@ -186,16 +191,12 @@ describe('View Flow Tests', () => {
     });
 
     it('should show error for invalid token', async () => {
-      const response = await axios.get(`${BASE_URL}/app/certificate?requestId=test-id&token=invalid-token`);
-      expect(response.status).to.equal(200);
-      
-      // Parse the HTML
-      dom.window.document.body.innerHTML = response.data;
-      
-      // Check for error message
-      const errorMessage = document.querySelector('.error.message');
-      expect(errorMessage).to.exist;
-      expect(errorMessage?.textContent).to.include('Invalid or expired token');
+      const response = await axios.get(`${BASE_URL}/app/certificate?requestId=test-id`, {
+        headers: {
+          'Authorization': 'Bearer invalid-token'
+        }
+      });
+      expect(response.status).to.equal(401);
     });
   });
 }); 

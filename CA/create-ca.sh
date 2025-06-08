@@ -9,9 +9,9 @@ set -e
 DAYS=3650  # 10 years
 CURVE="secp384r1"  # Using secp384r1 for better security and performance
 COUNTRY="US"
-STATE="MAryland"
+STATE="Maryland"
 LOCALITY="Bethesda"
-ORGANIZATION="ogt11.com, llc"
+ORGANIZATION="ogt11.com llc"
 ORG_UNIT="CertM3 PKI Certificate Authority"
 COMMON_NAME="ogt11.com Root CA"
 EMAIL="certM3@ogt11.com"
@@ -23,9 +23,16 @@ if [ ! -f serial ]; then
     echo "01" > serial
 fi
 
-# Generate CA private key using EC
-openssl ecparam -genkey -name ${CURVE} -out private/ca-key.pem
+# Generate CA private key using RSA
+rm private/ca-key.pem
+rm certs/ca-cert.pem
+openssl genrsa -out private/ca-key.pem 2048
+openssl rsa -in private/ca-key.pem -out private/ca-key.pem -traditional
 chmod 400 private/ca-key.pem
+
+# Comment out EC key generation
+# openssl ecparam -genkey -name ${CURVE} -out private/ca-key.pem
+# chmod 400 private/ca-key.pem
 
 # Generate CA certificate
 openssl req -new -x509 -days ${DAYS} -key private/ca-key.pem -out certs/ca-cert.pem \

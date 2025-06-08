@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
-	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -19,40 +19,38 @@ import (
 
 func main() {
 	// Parse command line flags
-	configPath := flag.String("config", "config.yaml", "Path to configuration file")
+	configPath := flag.String("config", "config.yaml", "Path to config file")
 	flag.Parse()
 
 	// Load configuration
-	cfg, err := config.Load(*configPath)
+	config, err := config.Load(*configPath)
 	if err != nil {
-		fmt.Printf("Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Initialize logger
-	logger, err := logging.New(cfg.LogLevel, cfg.LogFile)
+	logger, err := logging.New(config.LogLevel, config.Signer.LogFile, config.Verbose)
 	if err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
 	// Initialize metrics
 	m := metrics.New()
 
 	// Read CA certificate
-	caCertPEM, err := os.ReadFile(cfg.Signer.CACertPath)
+	caCertPEM, err := os.ReadFile(config.Signer.CACertPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Fatal("CA certificate file not found at %s", cfg.Signer.CACertPath)
+			logger.Fatal("CA certificate file not found at %s", config.Signer.CACertPath)
 		}
 		logger.Fatal("Failed to read CA certificate file: %v", err)
 	}
 
 	// Read CA key
-	caKeyPEM, err := os.ReadFile(cfg.Signer.CAKeyPath)
+	caKeyPEM, err := os.ReadFile(config.Signer.CAKeyPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Fatal("CA key file not found at %s", cfg.Signer.CAKeyPath)
+			logger.Fatal("CA key file not found at %s", config.Signer.CAKeyPath)
 		}
 		logger.Fatal("Failed to read CA key file: %v", err)
 	}
@@ -98,20 +96,20 @@ func main() {
 	}
 
 	// Initialize signer
-	s := signer.New(cfg, logger, m, caCert, caKey, cfg.Signer.RoleExtensionOID, cfg.Signer.UsernameExtensionOID)
+	s := signer.New(config, logger, m, caCert, caKey, config.Signer.RoleExtensionOID, config.Signer.UsernameExtensionOID)
 
 	// Initialize handler
 	h := signer.NewHandler(logger, m, s)
 
 	// Create socket directory
-	socketDir := filepath.Dir(cfg.Signer.SocketPath)
+	socketDir := filepath.Dir(config.Signer.SocketPath)
 	if err := os.MkdirAll(socketDir, 0755); err != nil {
 		logger.Error("Failed to create socket directory: %v", err)
 		os.Exit(1)
 	}
 
 	// Remove existing socket if it exists
-	if err := os.Remove(cfg.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(config.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
 		logger.Error("Failed to remove existing socket: %v", err)
 		os.Exit(1)
 	}
@@ -133,20 +131,20 @@ func main() {
 	//     "caCertificate": "string" // PEM-encoded CA certificate
 	//   }
 	// }
-	listener, err := net.Listen("unix", cfg.Signer.SocketPath)
+	listener, err := net.Listen("unix", config.Signer.SocketPath)
 	if err != nil {
 		logger.Error("Failed to create Unix domain socket: %v", err)
 		os.Exit(1)
 	}
 
 	// Set socket permissions
-	if err := os.Chmod(cfg.Signer.SocketPath, 0666); err != nil {
+	if err := os.Chmod(config.Signer.SocketPath, 0666); err != nil {
 		logger.Error("Failed to set socket permissions: %v", err)
 		os.Exit(1)
 	}
 
 	// Start server
-	logger.Info("Starting server on %s", cfg.Signer.SocketPath)
+	logger.Info("Starting server on %s", config.Signer.SocketPath)
 	go func() {
 		for {
 			conn, err := listener.Accept()
@@ -170,7 +168,7 @@ func main() {
 	}
 
 	// Remove socket file
-	if err := os.Remove(cfg.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(config.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
 		logger.Error("Failed to remove socket file: %v", err)
 	}
 

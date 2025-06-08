@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/ogt11/certm3/mw/internal/logging"
 	"github.com/ogt11/certm3/mw/internal/security"
 	"github.com/ogt11/certm3/mw/pkg/metrics"
@@ -617,31 +618,64 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 
 // CheckUsername handles username availability check
 func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
-		return
-	}
+	// Extract username from the URL path
+	vars := mux.Vars(r)
+	username := vars["username"]
 
-	backendReq, err := http.NewRequest("GET", h.backendURL+"/users/username/"+username, nil)
+	// Forward the request to the backend API
+	backendReq, err := http.NewRequest("GET", h.backendURL+"/api/request/check-username/"+username, nil)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to create backend request")
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	resp, err := h.client.Do(backendReq)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to send request to backend")
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
-	// Copy response to client
+	// Set response content type
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		h.logger.WithError(err).Error("Failed to copy response to client")
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+
+	// If backend returns 404, username is available
+	if resp.StatusCode == http.StatusNotFound {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]bool{"available": true})
+		return
+	}
+
+	// If backend returns 200, username is taken
+	if resp.StatusCode == http.StatusOK {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]bool{"available": false})
+		return
+	}
+
+	// For any other status code, return the error as JSON
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 }

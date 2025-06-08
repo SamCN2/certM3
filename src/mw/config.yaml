@@ -1,5 +1,5 @@
 # Logging configuration
-log_level: info  # Global log level (debug, info, warn, error)
+log_level: warn  # Global log level (debug, info, warn, error)
 log_file: /var/log/certM3/mw/app.log
 
 # App server configuration

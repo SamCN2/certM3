@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -26,14 +27,14 @@ import (
 
 func main() {
 	// Parse command line flags
-	configPath := flag.String("config", "./config.yaml", "Path to config file")
+	configPath := flag.String("config", "config.yaml", "Path to config file")
 	testAPI := flag.Bool("testapi", false, "Run in test API mode")
 	flag.Parse()
 
 	// Load configuration
-	cfg, err := config.Load(*configPath)
+	config, err := config.Load(*configPath)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Ensure JWT secret exists
@@ -60,25 +61,25 @@ func main() {
 	}
 
 	// Trim whitespace and update config with JWT secret
-	cfg.AppServer.JWTSecret = strings.TrimSpace(string(jwtSecret))
-	fmt.Printf("JWT secret in config: '%s'\n", cfg.AppServer.JWTSecret)
+	config.AppServer.JWTSecret = strings.TrimSpace(string(jwtSecret))
+	fmt.Printf("JWT secret in config: '%s'\n", config.AppServer.JWTSecret)
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
+	if err := config.Validate(); err != nil {
 		panic(err)
 	}
 
 	// Initialize logger
-	log, err := logging.New(cfg.LogLevel, cfg.LogFile)
+	logger, err := logging.New(config.LogLevel, config.AppServer.LogFile, config.Verbose)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
 	// Initialize metrics
 	m := metrics.New()
 
 	// Initialize JWT manager
-	jwtManager := security.NewJWTManager(cfg.AppServer.JWTSecret, "certM3", "certM3-app")
+	jwtManager := security.NewJWTManager(config.AppServer.JWTSecret, "certM3", "certM3-app")
 
 	// Create HTTP client with mTLS
 	client := &http.Client{
@@ -97,12 +98,12 @@ func main() {
 	}
 
 	// Create handler
-	h := app.NewHandler(log, m, jwtManager, client, cfg.AppServer.BackendAPIURL, *testAPI)
+	h := app.NewHandler(logger, m, jwtManager, client, config.AppServer.BackendAPIURL, *testAPI)
 
 	// If test API mode is enabled, run the test API flow and exit
 	if *testAPI {
-		if err := app.RunTestAPI(h, log); err != nil {
-			log.Fatal(err)
+		if err := app.RunTestAPI(h, logger); err != nil {
+			logger.Fatal(err)
 		}
 		return
 	}
@@ -112,14 +113,15 @@ func main() {
 
 	// Add middleware
 	r.Use(m.HTTPMiddleware)
-	r.Use(app.LoggingMiddleware(log))
-	r.Use(app.NewRateLimiter(cfg.AppServer.RateLimitPerIP, time.Second, m).RateLimitMiddleware)
-	r.Use(app.AuthMiddleware(jwtManager, log, m))
+	r.Use(app.LoggingMiddleware(logger))
+	r.Use(app.NewRateLimiter(config.AppServer.RateLimitPerIP, time.Second, m).RateLimitMiddleware)
+	r.Use(app.AuthMiddleware(jwtManager, logger, m))
 
 	// Add routes
 	r.HandleFunc("/app/initiate-request", h.InitiateRequest).Methods("POST")
 	r.HandleFunc("/app/validate-email", h.ValidateEmail).Methods("POST")
 	r.HandleFunc("/app/submit-csr", h.SubmitCSR).Methods("POST")
+	r.HandleFunc("/app/check-username/{username}", h.CheckUsername).Methods("GET")
 
 	// Add metrics endpoint
 	r.Handle("/metrics", m.Handler())
@@ -132,7 +134,7 @@ func main() {
 
 	// Create HTTP server for external access
 	srv := &http.Server{
-		Addr:         cfg.AppServer.ListenAddr,
+		Addr:         config.AppServer.ListenAddr,
 		Handler:      r,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -141,9 +143,9 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Info("Starting server on ", cfg.AppServer.ListenAddr)
+		logger.Info("Starting server on ", config.AppServer.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
+			logger.Fatal(err)
 		}
 	}()
 
@@ -153,11 +155,11 @@ func main() {
 	<-quit
 
 	// Graceful shutdown
-	log.Info("Shutting down server...")
+	logger.Info("Shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
-	log.Info("Server stopped")
+	logger.Info("Server stopped")
 }

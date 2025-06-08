@@ -13,10 +13,11 @@ import (
 // Logger is a wrapper around logrus.Logger
 type Logger struct {
 	*logrus.Logger
+	verbose bool
 }
 
 // New creates a new logger
-func New(level, logFile string) (*Logger, error) {
+func New(level, logFile string, verbose bool) (*Logger, error) {
 	log := logrus.New()
 
 	// Set log level
@@ -45,13 +46,17 @@ func New(level, logFile string) (*Logger, error) {
 			return nil, err
 		}
 
-		// Log to both file and stdout
-		log.SetOutput(io.MultiWriter(os.Stdout, file))
+		// Log to both file and stdout if verbose
+		if verbose {
+			log.SetOutput(io.MultiWriter(os.Stdout, file))
+		} else {
+			log.SetOutput(file)
+		}
 	} else {
 		log.SetOutput(os.Stdout)
 	}
 
-	return &Logger{log}, nil
+	return &Logger{log, verbose}, nil
 }
 
 // WithRequestID adds a request ID to the log entry
@@ -96,7 +101,19 @@ func (l *Logger) LogRequest(r *http.Request, duration time.Duration, statusCode 
 		fields["user_id"] = userID
 	}
 
-	l.WithFields(fields).Info("Request completed")
+	// Only log detailed request info in verbose mode
+	if l.verbose {
+		l.WithFields(fields).Info("Request completed")
+	} else {
+		// In non-verbose mode, only log essential info
+		essentialFields := map[string]interface{}{
+			"method":   r.Method,
+			"path":     r.URL.Path,
+			"status":   statusCode,
+			"duration": duration,
+		}
+		l.WithFields(essentialFields).Info("Request completed")
+	}
 }
 
 // LogSecurityEvent logs a security-related event
@@ -123,7 +140,17 @@ func (l *Logger) LogSecurityEvent(eventType string, details map[string]interface
 		}
 	}
 
-	l.WithFields(fields).Info("Security event")
+	// Always log security events, but with different detail levels
+	if l.verbose {
+		l.WithFields(fields).Info("Security event")
+	} else {
+		// In non-verbose mode, only log essential security info
+		essentialFields := map[string]interface{}{
+			"event_type": eventType,
+			"timestamp":  time.Now().UTC(),
+		}
+		l.WithFields(essentialFields).Info("Security event")
+	}
 }
 
 // LogError logs an error with context
@@ -138,7 +165,17 @@ func (l *Logger) LogError(err error, context map[string]interface{}) {
 		fields[k] = v
 	}
 
-	l.WithFields(fields).Error("Error occurred")
+	// Always log errors, but with different detail levels
+	if l.verbose {
+		l.WithFields(fields).Error("Error occurred")
+	} else {
+		// In non-verbose mode, only log essential error info
+		essentialFields := map[string]interface{}{
+			"error":     err.Error(),
+			"timestamp": time.Now().UTC(),
+		}
+		l.WithFields(essentialFields).Error("Error occurred")
+	}
 }
 
 // LogMetrics logs a metric with context
@@ -154,5 +191,15 @@ func (l *Logger) LogMetrics(metricName string, value float64, tags map[string]st
 		fields[k] = v
 	}
 
-	l.WithFields(fields).Info("Metric recorded")
+	// Only log detailed metrics in verbose mode
+	if l.verbose {
+		l.WithFields(fields).Info("Metric recorded")
+	} else {
+		// In non-verbose mode, only log essential metrics
+		essentialFields := map[string]interface{}{
+			"metric_name": metricName,
+			"value":       value,
+		}
+		l.WithFields(essentialFields).Info("Metric recorded")
+	}
 }
