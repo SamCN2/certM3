@@ -122,6 +122,7 @@ func main() {
 	r.HandleFunc("/app/validate-email", h.ValidateEmail).Methods("POST")
 	r.HandleFunc("/app/submit-csr", h.SubmitCSR).Methods("POST")
 	r.HandleFunc("/app/check-username/{username}", h.CheckUsername).Methods("GET")
+	r.HandleFunc("/app/get-groups/{username}", h.GetGroups).Methods("GET")
 
 	// Add metrics endpoint
 	r.Handle("/metrics", m.Handler())

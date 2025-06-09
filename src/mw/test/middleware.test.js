@@ -117,6 +117,19 @@ describe('CertM3 Middleware Tests', () => {
       expect(response.data).toHaveProperty('token');
       jwt = response.data.token;
       console.log('Received JWT token:', jwt);
+      
+      // Add a small delay to allow backend to create groups
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    test('/app/get-groups/{username} - Get user groups after validation', async () => {
+      // User should exist now after validation
+      const response = await api.get(`/app/get-groups/${testUsername}`);
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.data)).toBe(true);
+      // Should have both the username group and the default 'users' group
+      expect(response.data).toContain(testUsername);
+      expect(response.data).toContain('users');
     });
 
     test('/app/submit-csr - Submit and sign CSR', async () => {

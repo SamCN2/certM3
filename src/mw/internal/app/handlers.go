@@ -679,3 +679,125 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
+
+// GetGroups handles retrieving a user's groups
+func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
+	// Extract username from the URL path
+	vars := mux.Vars(r)
+	username := vars["username"]
+
+	// Step 1: Get user by username to get their userId
+	backendReq, err := http.NewRequest("GET", fmt.Sprintf("%s/api/users/username/%s", h.backendURL, username), nil)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Record backend request start time
+	start := time.Now()
+
+	resp, err := h.client.Do(backendReq)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		h.metrics.RecordBackendRequest("GET", "/users/username", "error", time.Since(start), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Record backend request metrics
+	h.metrics.RecordBackendRequest("GET", "/users/username", string(resp.StatusCode), time.Since(start), nil)
+
+	// If user not found, return 404
+	if resp.StatusCode == http.StatusNotFound {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// If other error, return it
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		w.WriteHeader(resp.StatusCode)
+		w.Write(body)
+		return
+	}
+
+	// Parse user response to get userId
+	var user struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Step 2: Get user's groups using their userId
+	backendReq, err = http.NewRequest("GET", fmt.Sprintf("%s/users/%s/groups", h.backendURL, user.ID), nil)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Record backend request start time
+	start = time.Now()
+
+	resp, err = h.client.Do(backendReq)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		h.metrics.RecordBackendRequest("GET", "/users/groups", "error", time.Since(start), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Record backend request metrics
+	h.metrics.RecordBackendRequest("GET", "/users/groups", string(resp.StatusCode), time.Since(start), nil)
+
+	// Set response content type
+	w.Header().Set("Content-Type", "application/json")
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Copy response to client
+	w.WriteHeader(resp.StatusCode)
+	if _, err := w.Write(body); err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+	}
+}

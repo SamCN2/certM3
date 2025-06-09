@@ -111,6 +111,32 @@ paths:
       responses:
         '200':
           description: OK
+  /app/get-groups/{username}:
+    get:
+      summary: Get user's groups
+      description: Retrieves all groups a user belongs to
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Username to get groups for
+      responses:
+        '200':
+          description: Array of group names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:

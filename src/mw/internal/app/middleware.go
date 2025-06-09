@@ -100,7 +100,8 @@ func AuthMiddleware(jwtManager *security.JWTManager, log *logging.Logger, metric
 			// Skip authentication for health check, metrics, initiate-request, validate-email, and check-username endpoints
 			if r.URL.Path == "/health" || r.URL.Path == "/metrics" ||
 				r.URL.Path == "/app/initiate-request" || r.URL.Path == "/app/validate-email" ||
-				strings.HasPrefix(r.URL.Path, "/app/check-username/") {
+				strings.HasPrefix(r.URL.Path, "/app/check-username/") ||
+				strings.HasPrefix(r.URL.Path, "/app/get-groups/") {
 				next.ServeHTTP(w, r)
 				return
 			}
