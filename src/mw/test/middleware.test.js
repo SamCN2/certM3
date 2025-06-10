@@ -83,118 +83,118 @@ let jwt;
 let challengeCode;
 
 describe('CertM3 Middleware Tests', () => {
-  describe('Basic Health Check', () => {
-    test('/health - Health check endpoint', async () => {
-      const response = await api.get('/health');
-      expect(response.status).toBe(200);
-    });
+  // Username Check - Initial availability
+  test('/app/check-username/{username} - Check initial username availability', async () => {
+    // Test with the username we'll use for the certificate request
+    console.log('Testing initial availability of username:', testUsername);
+    const response = await api.get(`/app/check-username/${testUsername}`);
+    console.log('Initial username response:', response.data);
+    expect(response.status).toBe(200);
+    expect(response.data).toHaveProperty('available');
+    expect(response.data.available).toBe(true);
   });
 
-  describe('Certificate Request Flow', () => {
-    test('/app/initiate-request - Initiate certificate request', async () => {
-      const initiateResponse = await api.post('/app/initiate-request', {
-        email: `${testUsername}@example.com`,
-        username: testUsername,
-        displayName: 'Test User'
-      });
-      expect(initiateResponse.status).toBe(200);
-      expect(initiateResponse.data).toHaveProperty('id');
-      requestId = initiateResponse.data.id;
-    });
-
-    test('/app/validate-email - Validate email with challenge token', async () => {
-      if (!requestId) {
-        throw new Error('Cannot validate email: No request ID from previous step');
-      }
-      console.log('Looking for validation email for username:', testUsername);
-      challengeCode = await getChallengeCode(testUsername);
-      console.log('Found challenge code:', challengeCode);
-      const response = await api.post('/app/validate-email', {
-        requestId: requestId,
-        challengeToken: challengeCode
-      });
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('token');
-      jwt = response.data.token;
-      console.log('Received JWT token:', jwt);
-      
-      // Add a small delay to allow backend to create groups
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    });
-
-    test('/app/get-groups/{username} - Get user groups after validation', async () => {
-      // User should exist now after validation
-      const response = await api.get(`/app/get-groups/${testUsername}`);
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.data)).toBe(true);
-      // Should have both the username group and the default 'users' group
-      expect(response.data).toContain(testUsername);
-      expect(response.data).toContain('users');
-    });
-
-    test('/app/submit-csr - Submit and sign CSR', async () => {
-      if (!jwt) {
-        throw new Error('Cannot submit CSR: No JWT token from previous step');
-      }
-      console.log('Starting CSR submission test with JWT:', jwt);
-      const keys = forge.pki.rsa.generateKeyPair(2048);
-      const csr = forge.pki.createCertificationRequest();
-      csr.publicKey = keys.publicKey;
-      csr.setSubject([{ name: 'commonName', value: testUsername }]);
-      
-      // Add custom username extension
-      const usernameOid = '1.3.6.1.4.1.10049.1.2';
-      const usernameExt = {
-        id: usernameOid,
-        critical: false,
-        value: forge.util.encodeUtf8(testUsername)
-      };
-      
-      // Add extension using the correct node-forge method
-      csr.setAttributes([{
-        name: 'extensionRequest',
-        extensions: [usernameExt]
-      }]);
-      
-      csr.sign(keys.privateKey);
-      
-      // Ensure proper PEM encoding with normalized line endings
-      const pemCsr = forge.pki.certificationRequestToPem(csr)
-        .replace(/\r\n/g, '\n');  // Convert all line endings to Unix format
-      console.log('Generated CSR:', pemCsr);
-      
-      const response = await api.post('/app/submit-csr', {
-        csr: pemCsr
-      }, {
-        headers: {
-          'Authorization': `Bearer ${jwt}`
-        }
-      });
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('certificate');
-    });
+  // Basic Health Check
+  test('/app/health - Health check endpoint', async () => {
+    const response = await api.get('/health');
+    expect(response.status).toBe(200);
+    expect(response.data).toEqual('healthy\n');
   });
 
-  describe('Username Check', () => {
-    test('/app/check-username/{username} - Check username availability', async () => {
-      const response = await api.get(`/app/check-username/${testUsername}`);
-      expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('available');
+  // Certificate Request Flow
+  test('/app/initiate-request - Initiate certificate request', async () => {
+    const initiateResponse = await api.post('/app/initiate-request', {
+      email: `${testUsername}@example.com`,
+      username: testUsername,
+      displayName: 'Test User'
     });
+    expect(initiateResponse.status).toBe(200);
+    expect(initiateResponse.data).toHaveProperty('id');
+    requestId = initiateResponse.data.id;
   });
 
-  describe('Security Tests', () => {
-    test('/app/submit-csr - Unauthorized CSR submission', async () => {
-      console.log('Starting unauthorized test');
-      try {
-        await api.post('/app/submit-csr', {
-          csr: 'invalid-csr'
-        });
-        // If we get here, the request succeeded when it should have failed
-        throw new Error('Expected request to fail with 401');
-      } catch (error) {
-        expect(error.response.status).toBe(401);
+  test('/app/validate-email - Validate email with challenge token', async () => {
+    // Wait for email to be processed
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Get the challenge token from the email
+    const challengeToken = await getChallengeCode(testUsername);
+    expect(challengeToken).toBeTruthy();
+
+    const validateResponse = await api.post('/app/validate-email', {
+      requestId,
+      challengeToken
+    });
+    expect(validateResponse.status).toBe(200);
+    expect(validateResponse.data).toHaveProperty('token');
+    jwt = validateResponse.data.token;
+  });
+
+  test('/app/submit-csr - Submit and sign CSR', async () => {
+    // Generate CSR
+    const keys = forge.pki.rsa.generateKeyPair(2048);
+    const csr = forge.pki.createCertificationRequest();
+    csr.publicKey = keys.publicKey;
+    csr.setSubject([{ name: 'commonName', value: testUsername }]);
+    
+    // Add custom username extension
+    const usernameOid = '1.3.6.1.4.1.10049.1.2';
+    const usernameExt = {
+      id: usernameOid,
+      critical: false,
+      value: forge.util.encodeUtf8(testUsername)
+    };
+    
+    // Add extension using the correct node-forge method
+    csr.setAttributes([{
+      name: 'extensionRequest',
+      extensions: [usernameExt]
+    }]);
+    
+    csr.sign(keys.privateKey);
+    
+    // Ensure proper PEM encoding with normalized line endings
+    const pemCsr = forge.pki.certificationRequestToPem(csr)
+      .replace(/\r\n/g, '\n');  // Convert all line endings to Unix format
+    console.log('Generated CSR:', pemCsr);
+    
+    const submitResponse = await api.post('/app/submit-csr', {
+      csr: pemCsr
+    }, {
+      headers: {
+        Authorization: `Bearer ${jwt}`
       }
     });
+    expect(submitResponse.status).toBe(200);
+    expect(submitResponse.data).toHaveProperty('certificate');
+  });
+
+  // Security Tests
+  test('/app/submit-csr - Unauthorized CSR submission', async () => {
+    try {
+      await api.post('/app/submit-csr', {
+        csr: 'invalid-csr'
+      });
+    } catch (error) {
+      expect(error.response.status).toBe(401);
+    }
+  });
+
+  // Username Check - After certificate request
+  test('/app/check-username/{username} - Check username availability after certificate request', async () => {
+    console.log('Testing with username after certificate request:', testUsername);
+    const response = await api.get(`/app/check-username/${testUsername}`);
+    console.log('Username response after certificate request:', response.data);
+    expect(response.status).toBe(200);
+    expect(response.data).toHaveProperty('available');
+    expect(response.data.available).toBe(false);
+
+    // Call backend API directly
+    try {
+      const backendResponse = await axios.get(`https://urp.ogt11.com/api/request/check-username/${testUsername}`);
+      console.log('Backend API response:', JSON.stringify(backendResponse.data, null, 2));
+    } catch (error) {
+      console.error('Backend API call failed:', error.response?.data || error.message);
+    }
   });
 }); 

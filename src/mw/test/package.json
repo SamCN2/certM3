@@ -4,7 +4,7 @@
   "description": "Test harness for CertM3 middleware application",
   "scripts": {
     "test": "jest",
-    "test:mw": "jest middleware.test.js"
+    "test:mw": "jest middleware.test.js --bail"
   },
   "dependencies": {
     "axios": "^1.6.7",

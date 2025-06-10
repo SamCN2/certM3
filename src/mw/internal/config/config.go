@@ -19,18 +19,20 @@ type Config struct {
 
 	// App server configuration
 	AppServer struct {
-		ListenAddr     string `yaml:"listen_addr"`
-		SocketPath     string `yaml:"socket_path"`
-		BackendAPIURL  string `yaml:"backend_api_url"`
-		JWTSecret      string `yaml:"jwt_secret"`
-		MTLSCertPath   string
-		MTLSKeyPath    string
-		MTLSCAPath     string
-		RateLimitPerIP int           `yaml:"rate_limit_per_ip"`
-		MetricsEnabled bool          `yaml:"metrics_enabled"`
-		MetricsPath    string        `yaml:"metrics_path"`
-		MetricsTimeout time.Duration `yaml:"metrics_timeout"`
-		LogFile        string        `yaml:"log_file"`
+		ListenAddr      string `yaml:"listen_addr"`
+		SocketPath      string `yaml:"socket_path"`
+		BackendAPIURL   string `yaml:"backend_api_url"`
+		FrontendBaseURL string `yaml:"frontend_baseurl"`
+		BackendBaseURL  string `yaml:"backend_baseurl"`
+		JWTSecret       string `yaml:"jwt_secret"`
+		MTLSCertPath    string
+		MTLSKeyPath     string
+		MTLSCAPath      string
+		RateLimitPerIP  int           `yaml:"rate_limit_per_ip"`
+		MetricsEnabled  bool          `yaml:"metrics_enabled"`
+		MetricsPath     string        `yaml:"metrics_path"`
+		MetricsTimeout  time.Duration `yaml:"metrics_timeout"`
+		LogFile         string        `yaml:"log_file"`
 	} `yaml:"app_server"`
 
 	// Signer configuration

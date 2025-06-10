@@ -1,12 +1,15 @@
 # Logging configuration
-log_level: debug  # Global log level (debug, info, warn, error)
+log_level: warn  # Global log level (debug, info, warn, error)
 log_file: /var/log/certM3/mw/app.log
+verbose: true  # Enable verbose logging to stdout
 
 # App server configuration
 app_server:
   listen_addr: ":8080"
   socket_path: "/var/run/certM3/mw/app.sock"
-  backend_api_url: "https://urp.ogt11.com/api"
+  backend_api_url: "https://urp.ogt11.com"
+  frontend_baseurl: "https://urp.ogt11.com/app"
+  backend_baseurl: "https://urp.ogt11.com/api"
   jwt_secret: ""  # Will be loaded from /var/spool/certM3/mw/JWT-secret
   rate_limit_per_ip: 100
   metrics_enabled: true
@@ -20,7 +23,7 @@ signer:
   ca_key_path: "/home/samcn2/src/certM3/CA/private/ca-key.pem"
 #  ca_cert_path: "/etc/certs/certM3/CA/certs/ca-cert.pem"
 #  ca_key_path: "/etc/certs/certM3/CA/private/ca-key.pem"
-  api_url: "https://urp.ogt11.com/api"
+  api_url: "https://urp.ogt11.com"
   subject_ou: "CertM3 Test CA"
   subject_o: "CertM3"
   subject_l: "Test"

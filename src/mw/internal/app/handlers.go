@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/ogt11/certm3/mw/internal/config"
 	"github.com/ogt11/certm3/mw/internal/logging"
 	"github.com/ogt11/certm3/mw/internal/security"
 	"github.com/ogt11/certm3/mw/pkg/metrics"
@@ -30,13 +31,14 @@ type Handler struct {
 	client     *http.Client
 	backendURL string
 	testMode   bool
+	config     *config.Config
 }
 
 // NewHandler creates a new handler
 // IMPORTANT: We use the same backend API call code path in both test and production modes.
 // This ensures that any issues with the frontend can be isolated from backend API integration issues.
 // The testMode flag is only used to bypass JWT validation in SubmitCSR, not to modify backend API calls.
-func NewHandler(logger *logging.Logger, metrics *metrics.Metrics, jwtManager *security.JWTManager, client *http.Client, backendURL string, testMode bool) *Handler {
+func NewHandler(logger *logging.Logger, metrics *metrics.Metrics, jwtManager *security.JWTManager, client *http.Client, backendURL string, testMode bool, config *config.Config) *Handler {
 	return &Handler{
 		logger:     logger,
 		metrics:    metrics,
@@ -44,6 +46,7 @@ func NewHandler(logger *logging.Logger, metrics *metrics.Metrics, jwtManager *se
 		client:     client,
 		backendURL: backendURL,
 		testMode:   testMode,
+		config:     config,
 	}
 }
 
@@ -162,7 +165,7 @@ func (h *Handler) InitiateRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendReq, err := http.NewRequest("POST", h.backendURL+"/requests", bytes.NewBuffer(reqBody))
+	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/requests", bytes.NewBuffer(reqBody))
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,
@@ -320,13 +323,14 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendReq, err := http.NewRequest("POST", fmt.Sprintf("%s/requests/%s/validate", h.backendURL, req.RequestID), bytes.NewBuffer(reqBody))
+	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/requests/"+req.RequestID+"/validate", bytes.NewBuffer(reqBody))
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,
 			"remote_ip":  r.RemoteAddr,
 			"user_agent": r.UserAgent(),
 		})
+		h.metrics.RecordBackendRequest("POST", "/requests/validate", "error", time.Since(start), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -622,14 +626,34 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	username := vars["username"]
 
-	// Forward the request to the backend API
-	backendReq, err := http.NewRequest("GET", h.backendURL+"/api/request/check-username/"+username, nil)
+	// Debug log to confirm handler execution
+	h.logger.WithFields(map[string]interface{}{
+		"username": username,
+		"path":     r.URL.Path,
+	}).Debug("DEBUG: CheckUsername handler called")
+
+	h.logger.WithFields(map[string]interface{}{
+		"username": username,
+		"path":     r.URL.Path,
+	}).Info("Checking username availability")
+
+	// Send request to backend
+	start := time.Now()
+	backendURL := h.config.AppServer.BackendAPIURL + "/request/check-username/" + username
+	h.logger.WithFields(map[string]interface{}{
+		"backend_url": backendURL,
+		"username":    username,
+		"config_url":  h.config.AppServer.BackendAPIURL,
+	}).Info("DEBUG: Full backend URL")
+
+	backendReq, err := http.NewRequest("GET", backendURL, nil)
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,
 			"remote_ip":  r.RemoteAddr,
 			"user_agent": r.UserAgent(),
 		})
+		h.metrics.RecordBackendRequest("GET", "/request/check-username", "error", time.Since(start), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -646,158 +670,68 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	// Set response content type
-	w.Header().Set("Content-Type", "application/json")
+	h.logger.WithFields(map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"url":         resp.Request.URL.String(),
+	}).Info("DEBUG: Backend response details")
 
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
+	// Check the response status code
+	h.logger.WithFields(map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"username":    username,
+	}).Info("DEBUG: Backend response status code")
+
+	switch resp.StatusCode {
+	case http.StatusNotFound: // 404
+		// Username is available
+		h.logger.WithFields(map[string]interface{}{
+			"username": username,
+			"status":   resp.StatusCode,
+		}).Info("DEBUG: Username is available (404)")
+		json.NewEncoder(w).Encode(map[string]bool{"available": true})
+	case http.StatusOK, http.StatusNoContent: // 200 or 204
+		// Username is taken
+		h.logger.WithFields(map[string]interface{}{
+			"username": username,
+			"status":   resp.StatusCode,
+		}).Info("DEBUG: Username is taken (200/204)")
+		json.NewEncoder(w).Encode(map[string]bool{"available": false})
+	default:
+		// Unexpected status code
+		h.logger.LogError(fmt.Errorf("unexpected status code from backend: %d", resp.StatusCode), map[string]interface{}{
 			"path":       r.URL.Path,
 			"remote_ip":  r.RemoteAddr,
 			"user_agent": r.UserAgent(),
 		})
+		h.metrics.RecordBackendRequest("GET", "/request/check-username", "error", time.Since(start), fmt.Errorf("unexpected status code: %d", resp.StatusCode))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	// If backend returns 404, username is available
-	if resp.StatusCode == http.StatusNotFound {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]bool{"available": true})
-		return
-	}
-
-	// If backend returns 200, username is taken
-	if resp.StatusCode == http.StatusOK {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]bool{"available": false})
-		return
-	}
-
-	// For any other status code, return the error as JSON
-	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
 }
 
-// GetGroups handles retrieving a user's groups
-func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
-	// Extract username from the URL path
-	vars := mux.Vars(r)
-	username := vars["username"]
+// HealthCheck handles the health check endpoint
+func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	h.logger.WithFields(map[string]interface{}{
+		"path":        r.URL.Path,
+		"method":      r.Method,
+		"remote_addr": r.RemoteAddr,
+	}).Debug("DEBUG: HealthCheck handler called")
 
-	// Step 1: Get user by username to get their userId
-	backendReq, err := http.NewRequest("GET", fmt.Sprintf("%s/api/users/username/%s", h.backendURL, username), nil)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Record backend request start time
-	start := time.Now()
-
-	resp, err := h.client.Do(backendReq)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		h.metrics.RecordBackendRequest("GET", "/users/username", "error", time.Since(start), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Record backend request metrics
-	h.metrics.RecordBackendRequest("GET", "/users/username", string(resp.StatusCode), time.Since(start), nil)
-
-	// If user not found, return 404
-	if resp.StatusCode == http.StatusNotFound {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	// If other error, return it
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		w.WriteHeader(resp.StatusCode)
-		w.Write(body)
-		return
-	}
-
-	// Parse user response to get userId
-	var user struct {
-		ID string `json:"id"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Step 2: Get user's groups using their userId
-	backendReq, err = http.NewRequest("GET", fmt.Sprintf("%s/users/%s/groups", h.backendURL, user.ID), nil)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Record backend request start time
-	start = time.Now()
-
-	resp, err = h.client.Do(backendReq)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		h.metrics.RecordBackendRequest("GET", "/users/groups", "error", time.Since(start), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Record backend request metrics
-	h.metrics.RecordBackendRequest("GET", "/users/groups", string(resp.StatusCode), time.Since(start), nil)
-
-	// Set response content type
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"build": "timestamp",
+		"ts":    time.Now().Unix(),
+	})
+}
 
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Copy response to client
-	w.WriteHeader(resp.StatusCode)
-	if _, err := w.Write(body); err != nil {
-		h.logger.LogError(err, map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-	}
+// RegisterRoutes registers all HTTP routes for the app
+func RegisterRoutes(r *mux.Router, h *Handler) {
+	r.HandleFunc("/app/initiate-request", h.InitiateRequest).Methods("POST")
+	r.HandleFunc("/app/validate-email", h.ValidateEmail).Methods("POST")
+	r.HandleFunc("/app/submit-csr", h.SubmitCSR).Methods("POST")
+	r.HandleFunc("/app/check-username/{username}", h.CheckUsername).Methods("GET")
+	r.HandleFunc("/app/health", h.HealthCheck).Methods("GET")
 }
