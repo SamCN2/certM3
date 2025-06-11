@@ -128,6 +128,20 @@ describe('CertM3 Middleware Tests', () => {
     expect(validateResponse.status).toBe(200);
     expect(validateResponse.data).toHaveProperty('token');
     jwt = validateResponse.data.token;
+
+  });
+  
+  test('/app/groups/{username} - Get user groups', async () => {
+    const groupsResponse = await api.get(`/app/groups/${testUsername}`, {
+      headers: {
+        Authorization: `Bearer ${jwt}`
+      }
+    });
+    expect(groupsResponse.status).toBe(200);
+    const groups = groupsResponse.data;
+    expect(Array.isArray(groups)).toBe(true);
+    expect(groups).toContain(testUsername);  // This is the "self" group
+    expect(groups).toContain('users');
   });
 
   test('/app/submit-csr - Submit and sign CSR', async () => {
