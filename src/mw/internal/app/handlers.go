@@ -608,6 +608,87 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Add user to users group
+		start = time.Now()
+		usersGroupBody, err := json.Marshal(membersData)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		h.logger.WithFields(map[string]interface{}{
+			"user_id":    backendResp.UserID,
+			"group_name": "users",
+			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups/users/members",
+		}).Info("Adding user to users group")
+
+		usersGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups/users/members", bytes.NewBuffer(usersGroupBody))
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": "users",
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups/members", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		usersGroupReq.Header.Set("Content-Type", "application/json")
+
+		usersGroupResp, err := h.client.Do(usersGroupReq)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": "users",
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups/members", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		respBody, err = io.ReadAll(usersGroupResp.Body)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": "users",
+			})
+			usersGroupResp.Body.Close()
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		usersGroupResp.Body.Close()
+
+		h.logger.WithFields(map[string]interface{}{
+			"status_code": usersGroupResp.StatusCode,
+			"user_id":     backendResp.UserID,
+			"group_name":  "users",
+			"response":    string(respBody),
+		}).Info("Users group membership response")
+
+		if usersGroupResp.StatusCode != http.StatusNoContent {
+			h.logger.WithFields(map[string]interface{}{
+				"status_code": usersGroupResp.StatusCode,
+				"user_id":     backendResp.UserID,
+				"group_name":  "users",
+				"response":    string(respBody),
+			}).Error("Failed to add user to users group")
+			http.Error(w, "Failed to add user to users group", http.StatusInternalServerError)
+			return
+		}
+
 		// Generate JWT token
 		token, err := h.jwtManager.GenerateToken(backendResp.UserID, req.RequestID)
 		if err != nil {
@@ -944,11 +1025,126 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetUserGroups handles retrieving a user's groups
+func (h *Handler) GetUserGroups(w http.ResponseWriter, r *http.Request) {
+	// Extract username from the URL path
+	vars := mux.Vars(r)
+	username := vars["username"]
+
+	h.logger.WithFields(map[string]interface{}{
+		"username": username,
+		"path":     r.URL.Path,
+	}).Info("Getting user groups")
+
+	// First, get the user info from backend
+	start := time.Now()
+	userURL := h.config.AppServer.BackendBaseURL + "/users/username/" + username
+	h.logger.WithFields(map[string]interface{}{
+		"user_url": userURL,
+		"username": username,
+	}).Info("DEBUG: Getting user info from backend")
+
+	userReq, err := http.NewRequest("GET", userURL, nil)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to create user request")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	userResp, err := h.client.Do(userReq)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get user info")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer userResp.Body.Close()
+
+	if userResp.StatusCode != http.StatusOK {
+		h.logger.WithFields(map[string]interface{}{
+			"status_code": userResp.StatusCode,
+		}).Error("Failed to get user info")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var userData struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(userResp.Body).Decode(&userData); err != nil {
+		h.logger.WithError(err).Error("Failed to decode user response")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Now get the groups for this user
+	start = time.Now()
+	groupsURL := h.config.AppServer.BackendBaseURL + "/users/" + userData.ID + "/groups"
+	h.logger.WithFields(map[string]interface{}{
+		"groups_url": groupsURL,
+		"user_id":    userData.ID,
+	}).Info("DEBUG: Getting user groups from backend")
+
+	groupsReq, err := http.NewRequest("GET", groupsURL, nil)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		h.metrics.RecordBackendRequest("GET", "/users/groups", "error", time.Since(start), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	groupsResp, err := h.client.Do(groupsReq)
+	if err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		h.metrics.RecordBackendRequest("GET", "/users/groups", "error", time.Since(start), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer groupsResp.Body.Close()
+
+	// Record backend request metrics
+	h.metrics.RecordBackendRequest("GET", "/users/groups", string(groupsResp.StatusCode), time.Since(start), nil)
+
+	if groupsResp.StatusCode != http.StatusOK {
+		h.logger.LogError(fmt.Errorf("unexpected status code: %d", groupsResp.StatusCode), map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse and return the groups
+	var groups []string
+	if err := json.NewDecoder(groupsResp.Body).Decode(&groups); err != nil {
+		h.logger.LogError(err, map[string]interface{}{
+			"path":       r.URL.Path,
+			"remote_ip":  r.RemoteAddr,
+			"user_agent": r.UserAgent(),
+		})
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the groups
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(groups)
+}
+
 // RegisterRoutes registers all HTTP routes for the app
 func RegisterRoutes(r *mux.Router, h *Handler) {
 	r.HandleFunc("/app/initiate-request", h.InitiateRequest).Methods("POST")
 	r.HandleFunc("/app/validate-email", h.ValidateEmail).Methods("POST")
 	r.HandleFunc("/app/submit-csr", h.SubmitCSR).Methods("POST")
 	r.HandleFunc("/app/check-username/{username}", h.CheckUsername).Methods("GET")
+	r.HandleFunc("/app/groups/{username}", h.GetUserGroups).Methods("GET")
 	r.HandleFunc("/app/health", h.HealthCheck).Methods("GET")
 }
