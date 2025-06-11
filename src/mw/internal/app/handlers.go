@@ -382,6 +382,232 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Get request details to get the username
+		start = time.Now()
+		requestReq, err := http.NewRequest("GET", h.config.AppServer.BackendBaseURL+"/requests/"+req.RequestID, nil)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			h.metrics.RecordBackendRequest("GET", "/requests", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		requestReq.Header.Set("Content-Type", "application/json")
+
+		requestResp, err := h.client.Do(requestReq)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			h.metrics.RecordBackendRequest("GET", "/requests", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		requestBody, err := io.ReadAll(requestResp.Body)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			requestResp.Body.Close()
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		requestResp.Body.Close()
+
+		var requestData struct {
+			Username string `json:"username"`
+		}
+		if err := json.Unmarshal(requestBody, &requestData); err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Create self group
+		selfGroupData := struct {
+			Name        string `json:"name"`
+			DisplayName string `json:"displayName"`
+			Description string `json:"description"`
+		}{
+			Name:        requestData.Username,
+			DisplayName: requestData.Username + "'s Group",
+			Description: "Personal group for " + requestData.Username,
+		}
+
+		h.logger.WithFields(map[string]interface{}{
+			"username":   requestData.Username,
+			"group_data": selfGroupData,
+			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups",
+			"request_id": req.RequestID,
+		}).Info("Creating self group")
+
+		// Create self group
+		start = time.Now()
+		selfGroupBody, err := json.Marshal(selfGroupData)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		selfGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups", bytes.NewBuffer(selfGroupBody))
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		selfGroupReq.Header.Set("Content-Type", "application/json")
+
+		selfGroupResp, err := h.client.Do(selfGroupReq)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		respBody, err = io.ReadAll(selfGroupResp.Body)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			selfGroupResp.Body.Close()
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		selfGroupResp.Body.Close()
+
+		h.logger.WithFields(map[string]interface{}{
+			"status_code": selfGroupResp.StatusCode,
+			"group_name":  requestData.Username,
+			"response":    string(respBody),
+		}).Info("Self group creation response")
+
+		if selfGroupResp.StatusCode != http.StatusCreated && selfGroupResp.StatusCode != http.StatusOK {
+			h.logger.WithFields(map[string]interface{}{
+				"status_code": selfGroupResp.StatusCode,
+				"group_name":  requestData.Username,
+				"response":    string(respBody),
+			}).Error("Failed to create self group")
+			http.Error(w, "Failed to create self group", http.StatusInternalServerError)
+			return
+		}
+
+		// Add user to self group
+		membersData := struct {
+			UserIDs []string `json:"userIds"`
+		}{
+			UserIDs: []string{backendResp.UserID},
+		}
+
+		membersBody, err := json.Marshal(membersData)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+			})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		h.logger.WithFields(map[string]interface{}{
+			"user_id":    backendResp.UserID,
+			"group_name": requestData.Username,
+			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups/" + requestData.Username + "/members",
+		}).Info("Adding user to self group")
+
+		// Add to self group
+		start = time.Now()
+		selfMembersReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups/"+requestData.Username+"/members", bytes.NewBuffer(membersBody))
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": requestData.Username,
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups/members", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		selfMembersReq.Header.Set("Content-Type", "application/json")
+
+		selfMembersResp, err := h.client.Do(selfMembersReq)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": requestData.Username,
+			})
+			h.metrics.RecordBackendRequest("POST", "/groups/members", "error", time.Since(start), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		respBody, err = io.ReadAll(selfMembersResp.Body)
+		if err != nil {
+			h.logger.LogError(err, map[string]interface{}{
+				"path":       r.URL.Path,
+				"remote_ip":  r.RemoteAddr,
+				"user_agent": r.UserAgent(),
+				"user_id":    backendResp.UserID,
+				"group_name": requestData.Username,
+			})
+			selfMembersResp.Body.Close()
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		selfMembersResp.Body.Close()
+
+		h.logger.WithFields(map[string]interface{}{
+			"status_code": selfMembersResp.StatusCode,
+			"user_id":     backendResp.UserID,
+			"group_name":  requestData.Username,
+			"response":    string(respBody),
+		}).Info("Self group membership response")
+
+		if selfMembersResp.StatusCode != http.StatusNoContent {
+			h.logger.WithFields(map[string]interface{}{
+				"status_code": selfMembersResp.StatusCode,
+				"user_id":     backendResp.UserID,
+				"group_name":  requestData.Username,
+				"response":    string(respBody),
+			}).Error("Failed to add user to self group")
+			http.Error(w, "Failed to add user to self group", http.StatusInternalServerError)
+			return
+		}
+
 		// Generate JWT token
 		token, err := h.jwtManager.GenerateToken(backendResp.UserID, req.RequestID)
 		if err != nil {
@@ -639,11 +865,11 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendURL := h.config.AppServer.BackendAPIURL + "/request/check-username/" + username
+	backendURL := h.config.AppServer.BackendBaseURL + "/request/check-username/" + username
 	h.logger.WithFields(map[string]interface{}{
 		"backend_url": backendURL,
 		"username":    username,
-		"config_url":  h.config.AppServer.BackendAPIURL,
+		"config_url":  h.config.AppServer.BackendBaseURL,
 	}).Info("DEBUG: Full backend URL")
 
 	backendReq, err := http.NewRequest("GET", backendURL, nil)
@@ -683,32 +909,23 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 		"username":    username,
 	}).Info("DEBUG: Backend response status code")
 
-	switch resp.StatusCode {
-	case http.StatusNotFound: // 404
-		// Username is available
-		h.logger.WithFields(map[string]interface{}{
-			"username": username,
-			"status":   resp.StatusCode,
-		}).Info("DEBUG: Username is available (404)")
-		json.NewEncoder(w).Encode(map[string]bool{"available": true})
-	case http.StatusOK, http.StatusNoContent: // 200 or 204
-		// Username is taken
-		h.logger.WithFields(map[string]interface{}{
-			"username": username,
-			"status":   resp.StatusCode,
-		}).Info("DEBUG: Username is taken (200/204)")
-		json.NewEncoder(w).Encode(map[string]bool{"available": false})
-	default:
-		// Unexpected status code
-		h.logger.LogError(fmt.Errorf("unexpected status code from backend: %d", resp.StatusCode), map[string]interface{}{
-			"path":       r.URL.Path,
-			"remote_ip":  r.RemoteAddr,
-			"user_agent": r.UserAgent(),
-		})
-		h.metrics.RecordBackendRequest("GET", "/request/check-username", "error", time.Since(start), fmt.Errorf("unexpected status code: %d", resp.StatusCode))
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	// Default to username being unavailable
+	available := false
+	statusMsg := "Username is taken"
+
+	// Only mark as available if we get a 404
+	// if resp.StatusCode == http.StatusNotFound {
+	if resp.StatusCode == 404 {
+		available = true
+		statusMsg = "Username is available"
 	}
+
+	h.logger.WithFields(map[string]interface{}{
+		"username": username,
+		"status":   resp.StatusCode,
+	}).Info("DEBUG: " + statusMsg)
+
+	json.NewEncoder(w).Encode(map[string]bool{"available": available})
 }
 
 // HealthCheck handles the health check endpoint
@@ -717,7 +934,7 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 		"path":        r.URL.Path,
 		"method":      r.Method,
 		"remote_addr": r.RemoteAddr,
-	}).Debug("DEBUG: HealthCheck handler called")
+	}).Debug("HealthCheck handler called")
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

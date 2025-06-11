@@ -111,7 +111,7 @@ paths:
       responses:
         '200':
           description: OK
-  /app/get-groups/{username}:
+  /app/groups/{username}:
     get:
       summary: Get user's groups
       description: Retrieves all groups a user belongs to
