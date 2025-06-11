@@ -46,10 +46,10 @@ Dear ${request.displayName},
 Thank you for requesting a certM3 account. To validate your account, please use one of the following methods:
 
 1. Click this link to validate automatically:
-   https://urp.ogt11.com/app/validate/${request.id}/${request.challenge}
+   https://urp.ogt11.com/certm3/validate/${request.id}/${request.challenge}
 
 2. Or visit this page and enter your validation code:
-   https://urp.ogt11.com/app/validate/${request.id}
+   https://urp.ogt11.com/certm3/validate/${request.id}
    
    Your validation code is: ${request.challenge}
 
@@ -280,7 +280,7 @@ The certM3 Team
   @get('/request/check-username/{username}', {
     responses: {
       '200': {
-        description: 'Username exists',
+        description: 'Username unavailable',
       },
       '404': {
         description: 'Username is available',

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 Username Check</title>
+    <style>
+        :root {
+            --primary-color: #1976d2;
+            --error-color: #d32f2f;
+            --success-color: #388e3c;
+            --text-color: #333;
+            --background-color: #f5f5f5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        select[multiple] {
+            min-height: 100px;
+            padding: 0.5rem;
+        }
+
+        select[multiple] option {
+            padding: 0.5rem;
+            margin: 2px 0;
+        }
+
+        .form-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .error {
+            color: var(--error-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .success {
+            color: var(--success-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Hide views by default */
+        .view {
+            display: none;
+        }
+
+        /* Show active view */
+        .view.active {
+            display: block;
+        }
+
+        /* Validation form specific styles */
+        .validation-form {
+            margin-top: 2rem;
+        }
+
+        .validation-form .form-group {
+            max-width: 400px;
+        }
+
+        .validation-form input {
+            font-family: monospace;
+            letter-spacing: 0.1em;
+        }
+
+        .entropy-meter {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .entropy-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .entropy-bar::before {
+            content: '';
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: #dc3545;
+            transition: all 0.3s ease;
+        }
+        .entropy-bar.weak::before {
+            width: 33%;
+            background: #dc3545;
+        }
+        .entropy-bar.medium::before {
+            width: 66%;
+            background: #ffc107;
+        }
+        .entropy-bar.strong::before {
+            width: 100%;
+            background: #28a745;
+        }
+        .entropy-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        #groupSelect {
+            min-height: 100px;
+        }
+        .certificate-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.btn-secondary {
+            background-color: #6c757d;
+        }
+
+        /* Certificate Details View Styles */
+        .certificate-info {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .basic-details {
+            margin-bottom: 1rem;
+        }
+
+        .basic-details p {
+            margin: 0.5rem 0;
+        }
+
+        .full-details {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .full-details pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .download-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #e8f5e9;
+            border-radius: 4px;
+        }
+
+        .warning {
+            color: #d32f2f;
+            font-weight: 500;
+        }
+
+        .success-message {
+            color: var(--success-color);
+            margin-bottom: 2rem;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app">
+            <!-- Initial Request Form -->
+            <div id="requestForm" class="view card">
+                <h2>Request Certificate</h2>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                    <div id="username-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                    <div id="email-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="displayName">Display Name</label>
+                    <input type="text" id="displayName" name="displayName" required>
+                    <div id="displayName-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <button id="submitButton" type="submit" disabled>Request Account</button>
+                    <div id="submit-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Validation Form -->
+            <div id="validationForm" class="view card">
+                <h2>Validate Your Email</h2>
+                <p>Please check your email for the validation code and enter it below.</p>
+                <div class="form-group">
+                    <label for="challengeToken">Validation Code</label>
+                    <input type="text" id="challengeToken" name="challengeToken" required 
+                           placeholder="Enter the code from your email">
+                    <div id="challenge-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <button id="validateButton" type="submit">Validate Email</button>
+                    <div id="validate-feedback"></div>
+                </div>
+            </div>
+
+            <!-- CSR Form -->
+            <div id="csrForm" class="view card">
+                <h2>Generate Certificate</h2>
+                <div class="form-group">
+                    <label for="groupSelect">Select Groups:</label>
+                    <select id="groupSelect" multiple class="form-control">
+                        <!-- Groups will be populated dynamically -->
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple groups</small>
+                </div>
+                <div class="form-group">
+                    <label for="passphrase">Private Key Passphrase:</label>
+                    <input type="password" id="passphrase" class="form-control" required>
+                    <div class="entropy-meter">
+                        <div class="entropy-bar"></div>
+                        <div class="entropy-text">Password strength: <span id="entropyValue">0</span> bits</div>
+                    </div>
+                    <small class="form-text text-muted">
+                        Please enter a private key passphrase. You will need this to use your certificate. 
+                        This passphrase is non-recoverable, please don't forget it.
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassphrase">Confirm Passphrase:</label>
+                    <input type="password" id="confirmPassphrase" class="form-control" required disabled>
+                    <small class="form-text text-muted">
+                        <!-- TODO: Implement passphrase confirmation -->
+                        Passphrase confirmation will be implemented in the next update.
+                    </small>
+                </div>
+                <button id="generateCertBtn" class="btn btn-primary">Generate Certificate</button>
+                <div id="generate-feedback"></div>
+            </div>
+
+            <div id="certificateView" class="view" style="display: none;">
+                <h2>Certificate Generated Successfully!</h2>
+                <div class="certificate-details">
+                    <h3>Certificate Information</h3>
+                    <div id="certificateInfo">
+                        <p><strong>Subject:</strong> <span id="certSubject"></span></p>
+                        <p><strong>Issuer:</strong> <span id="certIssuer"></span></p>
+                        <p><strong>Valid From:</strong> <span id="certValidFrom"></span></p>
+                        <p><strong>Valid To:</strong> <span id="certValidTo"></span></p>
+                        <p><strong>Serial Number:</strong> <span id="certSerial"></span></p>
+                        <p><strong>Groups:</strong> <span id="certGroups"></span></p>
+                    </div>
+                    <div class="alert alert-info">
+                        <p>Your certificate has been generated and is ready to be stored.</p>
+                        <p>The certificate and private key are securely stored in your browser.</p>
+                        <p>Please keep your passphrase safe - it will be needed to use the certificate.</p>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button id="storeCertBtn" class="btn btn-primary">Store Certificate</button>
+                    <button id="newRequestBtn" class="btn btn-secondary">Start New Request</button>
+                </div>
+            </div>
+
+            <!-- Certificate Form -->
+            <div id="certificate-step" class="view">
+                <div class="card">
+                    <h2>Generate Certificate</h2>
+                    <form id="certificate-form" method="post" onsubmit="return false;">
+                        <div class="form-group">
+                            <label for="passphrase">Passphrase</label>
+                            <input type="password" id="passphrase" name="passphrase" required>
+                            <div class="entropy-meter">
+                                <div class="entropy-bar"></div>
+                                <div class="entropy-text">Password strength: <span id="entropyValue">0</span> bits</div>
+                            </div>
+                            <small class="form-text text-muted">
+                                Please enter a private key passphrase. You will need this to use your certificate. 
+                                This passphrase is non-recoverable, please don't forget it.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Groups</label>
+                            <div id="groups-container">
+                                <!-- Groups will be dynamically inserted here -->
+                            </div>
+                        </div>
+                        <button type="submit">Generate Certificate</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Certificate Details View -->
+            <div id="certificate-details" class="view">
+                <div class="card">
+                    <h2>Certificate Generated Successfully</h2>
+                    <div class="success-message">
+                        <p>Your certificate has been generated and is ready for download.</p>
+                        <p>Please download your certificate package and store it securely.</p>
+                    </div>
+                    
+                    <div class="certificate-info">
+                        <h3>Certificate Information</h3>
+                        <div class="basic-details">
+                            <p><strong>Subject:</strong> <span id="cert-subject"></span></p>
+                            <p><strong>Issuer:</strong> <span id="cert-issuer"></span></p>
+                            <p><strong>Valid From:</strong> <span id="cert-valid-from"></span></p>
+                            <p><strong>Valid To:</strong> <span id="cert-valid-to"></span></p>
+                            <p><strong>Serial Number:</strong> <span id="cert-serial"></span></p>
+                        </div>
+                        
+                        <div class="full-details" style="display: none;">
+                            <h4>Full Certificate Details</h4>
+                            <pre id="cert-full-details"></pre>
+                        </div>
+                        
+                        <button id="toggle-details" class="btn btn-secondary">Show Full Details</button>
+                    </div>
+                    
+                    <div class="download-section">
+                        <h3>Download Certificate</h3>
+                        <p>Click the button below to download your certificate package (.p12 file).</p>
+                        <p class="warning">Remember: You will need your passphrase to use this certificate.</p>
+                        <div id="download-container">
+                            <!-- Download link will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+
+    <!-- Load application -->
+    <script>
+        // Wait for forge to be available
+        function waitForForge(callback, maxAttempts = 10) {
+            let attempts = 0;
+            const checkForge = () => {
+                if (typeof forge !== 'undefined') {
+                    callback();
+                } else if (attempts < maxAttempts) {
+                    attempts++;
+                    setTimeout(checkForge, 100);
+                } else {
+                    console.error('Failed to load forge library');
+                }
+            };
+            checkForge();
+        }
+
+        // Load our app only after forge is ready
+        waitForForge(() => {
+            const script = document.createElement('script');
+            script.src = 'index.js';
+            document.body.appendChild(script);
+        });
+    </script>
+</body>
+</html> 

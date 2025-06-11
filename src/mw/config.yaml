@@ -1,5 +1,5 @@
 # Logging configuration
-log_level: warn  # Global log level (debug, info, warn, error)
+log_level: debug  # Global log level (debug, info, warn, error)
 log_file: /var/log/certM3/mw/app.log
 verbose: true  # Enable verbose logging to stdout
 
@@ -7,7 +7,6 @@ verbose: true  # Enable verbose logging to stdout
 app_server:
   listen_addr: ":8080"
   socket_path: "/var/run/certM3/mw/app.sock"
-  backend_api_url: "https://urp.ogt11.com"
   frontend_baseurl: "https://urp.ogt11.com/app"
   backend_baseurl: "https://urp.ogt11.com/api"
   jwt_secret: ""  # Will be loaded from /var/spool/certM3/mw/JWT-secret
