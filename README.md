@@ -52,19 +52,39 @@ The system is being developed in phases:
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 20 or later
-- PostgreSQL 14 or later
-- golang 1.24
-- PM2
-- systemd
+### Quick Installation
 
-### API Service Setup
+For a fully automated installation on a fresh system:
+
 ```bash
-pm2 start ecosystem.config.js
+git clone https://github.com/your-org/certM3.git
+cd certM3
+./scripts/fresh-install.sh
 ```
 
-The API will be available at `http://localhost:3000`.
+### Manual Installation
+
+For detailed installation instructions, see:
+- **[Installation Guide](Install/README.md)** - Complete setup instructions
+- **[Database Setup](Install/database-setup.md)** - PostgreSQL configuration with mTLS
+- **[CA Management](../CA-mgmt/README.md)** - Certificate Authority setup
+
+### Prerequisites
+- **Operating System**: Linux (Ubuntu 20.04+, CentOS 8+, or similar)
+- **Go**: Version 1.21 or later
+- **Node.js**: Version 18 or later
+- **PostgreSQL**: Version 14 or later
+- **OpenSSL**: Latest version
+
+### Verification
+
+After installation, verify your setup:
+
+```bash
+./scripts/verify-build.sh
+```
+
+This script checks all dependencies and builds all components.
 
 ## Configuration
 
@@ -108,8 +128,13 @@ interface ApiConfig {
 
 ## Documentation
 
-- API Documentation: Available at `/openapi.json` when the API is running
-- API Explorer: Available at `/explorer` when the API is running
+- **[Installation Guide](Install/README.md)** - Complete setup instructions
+- **[Database Setup](Install/database-setup.md)** - PostgreSQL configuration
+- **[CA Management](../CA-mgmt/README.md)** - Certificate Authority management
+- **[Production Checklist](../docs/production-checklist.md)** - Production deployment guide
+- **[API Documentation](../docs/api-documentation.md)** - API reference
+- **API Explorer**: Available at `/explorer` when the API is running
+- **OpenAPI Spec**: Available at `/openapi.json` when the API is running
 
 ## License
 
