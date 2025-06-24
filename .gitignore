@@ -59,6 +59,7 @@ typings/
 
 # dotenv environment variables file
 .env
+.env.production
 
 # Transpiled JavaScript files from Typescript
 /dist
@@ -89,3 +90,22 @@ src/testm3/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Temporary and data files
+data4*.txt
+certificate-flow.test.ts
+frontend-specs.md
+
+# Deprecated and development directories
+src/mw/app.deprecated/
+src/web/
+static/
+
+# Binary files
+src/mw/certm3-app
+src/mw/bin/
+
+# Test artifacts
+*.test.js
+*.test.ts
+!src/mw/test/

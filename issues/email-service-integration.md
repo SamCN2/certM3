@@ -42,3 +42,4 @@
 - Email service API documentation
 - Email template requirements
 - Security requirements for service communication 
+- Agreement between the backend and the web frontend on the URL format

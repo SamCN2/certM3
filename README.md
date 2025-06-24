@@ -7,16 +7,24 @@ CertM3 is a comprehensive certificate management system designed to handle the l
 ### 1. API Service (`src/api`) - Pretty mature, but missing one group path
 The core backend service that provides RESTful APIs for certificate management. Built with LoopBack 4 and TypeScript, it handles:
 - User and group management
-- Certificate lifecycle (creation, validation, revocation)
+- Certificate metadata (creation, validation, revocation)
 - Request processing
 - Role-based access control
 
-### 2. Web Application (`src/app`) - Working.  Rough edges!
-A user-friendly web interface for certificate management. Planned features include:
-- Certificate request submission
-- Status tracking
-- User profile management
-- Certificate viewing and downloading
+### 2. Middleware Application (`src/mw`) - Working.
+A go middleware.  Isolates the backend from the front.
+- Really could be eliminated, but go let's us do a really cool signer sub-app.
+- CSR signing and component (OID) management.
+- Rate Limiting and JWT management.
+
+### 3. Web Application (`src/web`) - Almost Working.  Rough edges!
+A user-friendly web interface for certificate management. 
+- Progressive SPA
+- Collects basic user info
+- Forms for email validation
+- Create private key for CSR
+- Key never leaves browser - Server convenience with DIY security.
+- Certificate downloading and PKCS12 wrapping for browser inserttion.
 
 ### 3. Admin Interface (`src/admin`) - Coming Soon
 A dedicated administrative interface for CertM3 management. Planned features include:
@@ -38,16 +46,18 @@ The API service is currently operational and provides the following functionalit
 
 The system is being developed in phases:
 1. ✅ API Service (Current)
-2. 🔄 Web Application (In Planning)
-3. 📅 Admin Interface (Planned)
+2. ✅ Middleware (Current)
+3. 🔄 Web Application (Current)
+4. 📅 Admin Interface (Planned)
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 20 or later
 - PostgreSQL 14 or later
-- Docker (optional)
+- golang 1.24
 - PM2
+- systemd
 
 ### API Service Setup
 ```bash
