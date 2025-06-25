@@ -37,6 +37,7 @@ check_version_and_confirm() {
     local min_version=$2
     local version_command=$3
     local install_command=$4
+    local manual_install_guide=$5
     
     echo ""
     echo "=== Checking $tool_name ==="
@@ -55,17 +56,20 @@ check_version_and_confirm() {
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             print_status "INFO" "Please install/update $tool_name manually and run this script again"
+            echo -e "${BLUE}ℹ${NC} Manual installation guide:"
+            echo "$manual_install_guide"
             exit 1
         fi
     else
         print_status "WARN" "$tool_name is not installed"
         echo -e "${BLUE}ℹ${NC} Minimum required: $min_version"
-        echo -e "${BLUE}ℹ${NC} Install command: $install_command"
         
         read -p "Install $tool_name automatically? (y/n): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             print_status "INFO" "Please install $tool_name manually and run this script again"
+            echo -e "${BLUE}ℹ${NC} Manual installation guide:"
+            echo "$manual_install_guide"
             exit 1
         fi
         
@@ -149,7 +153,7 @@ install_go() {
     print_status "OK" "Go installed successfully"
 }
 
-check_version_and_confirm "go" "1.19" "go version" "install_go"
+check_version_and_confirm "go" "1.19" "go version" "install_go" "Visit https://go.dev/dl/ and download the appropriate version for your system"
 
 echo ""
 echo "=== 3. Checking Node.js ==="
@@ -176,7 +180,7 @@ install_nodejs() {
     print_status "OK" "Node.js installed successfully"
 }
 
-check_version_and_confirm "node" "18" "node --version" "install_nodejs"
+check_version_and_confirm "node" "18" "node --version" "install_nodejs" "Visit https://nodejs.org/ and download Node.js 18+ or use your system package manager"
 
 echo ""
 echo "=== 4. Checking PostgreSQL ==="
@@ -207,20 +211,22 @@ install_postgresql() {
     print_status "OK" "PostgreSQL installed and started"
 }
 
-# Check if PostgreSQL is installed and running
+# PostgreSQL manual installation guide
+PG_MANUAL_GUIDE="
+For Ubuntu/Debian: sudo apt install postgresql postgresql-contrib
+For CentOS/RHEL: sudo dnf install postgresql-server postgresql-contrib
+For macOS: brew install postgresql@14
+Visit https://www.postgresql.org/download/ for other systems"
+
+check_version_and_confirm "psql" "14" "psql --version" "install_postgresql" "$PG_MANUAL_GUIDE"
+
+# Additional PostgreSQL service check
 if command -v psql >/dev/null 2>&1; then
-    print_status "INFO" "PostgreSQL is installed"
-    
-    # Try to get version
-    PG_VERSION=$(psql --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1 || echo "unknown")
-    echo -e "${BLUE}ℹ${NC} Current version: $PG_VERSION"
-    echo -e "${BLUE}ℹ${NC} Minimum required: 14"
-    
     # Check if service is running
     if pg_isready >/dev/null 2>&1; then
         print_status "OK" "PostgreSQL service is running"
     else
-        print_status "WARN" "PostgreSQL service is not running"
+        print_status "WARN" "PostgreSQL service is not running, attempting to start..."
         case $OS in
             "debian"|"redhat")
                 sudo systemctl start postgresql
@@ -229,26 +235,15 @@ if command -v psql >/dev/null 2>&1; then
                 brew services start postgresql
                 ;;
         esac
+        
+        # Check again
+        if pg_isready >/dev/null 2>&1; then
+            print_status "OK" "PostgreSQL service started successfully"
+        else
+            print_status "WARN" "PostgreSQL service could not be started automatically"
+            echo -e "${BLUE}ℹ${NC} Please start PostgreSQL manually and run this script again"
+        fi
     fi
-    
-    read -p "Continue with current PostgreSQL installation? (y/n): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_status "INFO" "Please install/update PostgreSQL manually and run this script again"
-        exit 1
-    fi
-else
-    print_status "WARN" "PostgreSQL is not installed"
-    echo -e "${BLUE}ℹ${NC} Minimum required: 14"
-    
-    read -p "Install PostgreSQL automatically? (y/n): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_status "INFO" "Please install PostgreSQL manually and run this script again"
-        exit 1
-    fi
-    
-    install_postgresql
 fi
 
 echo ""
