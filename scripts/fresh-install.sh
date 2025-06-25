@@ -31,6 +31,49 @@ print_status() {
     fi
 }
 
+# Function to check version and ask for confirmation
+check_version_and_confirm() {
+    local tool_name=$1
+    local min_version=$2
+    local version_command=$3
+    local install_command=$4
+    
+    echo ""
+    echo "=== Checking $tool_name ==="
+    
+    if command -v $tool_name >/dev/null 2>&1; then
+        local current_version=$($version_command 2>/dev/null || echo "unknown")
+        print_status "INFO" "$tool_name is installed"
+        echo -e "${BLUE}ℹ${NC} Current version: $current_version"
+        echo -e "${BLUE}ℹ${NC} Minimum required: $min_version"
+        
+        if [[ "$current_version" == "unknown" ]]; then
+            print_status "WARN" "Could not determine $tool_name version"
+        fi
+        
+        read -p "Continue with current $tool_name installation? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_status "INFO" "Please install/update $tool_name manually and run this script again"
+            exit 1
+        fi
+    else
+        print_status "WARN" "$tool_name is not installed"
+        echo -e "${BLUE}ℹ${NC} Minimum required: $min_version"
+        echo -e "${BLUE}ℹ${NC} Install command: $install_command"
+        
+        read -p "Install $tool_name automatically? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_status "INFO" "Please install $tool_name manually and run this script again"
+            exit 1
+        fi
+        
+        # Execute the install command
+        eval "$install_command"
+    fi
+}
+
 # Function to detect OS
 detect_os() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -58,11 +101,11 @@ case $OS in
     "debian")
         print_status "INFO" "Installing dependencies on Debian/Ubuntu..."
         sudo apt update
-        sudo apt install -y git curl wget build-essential openssl postgresql postgresql-contrib
+        sudo apt install -y git curl wget build-essential openssl
         ;;
     "redhat")
         print_status "INFO" "Installing dependencies on RedHat/CentOS..."
-        sudo dnf install -y git curl wget gcc openssl postgresql-server postgresql-contrib
+        sudo dnf install -y git curl wget gcc openssl
         ;;
     "macos")
         print_status "INFO" "Installing dependencies on macOS..."
@@ -71,23 +114,23 @@ case $OS in
             echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
             exit 1
         fi
-        brew install git curl wget openssl postgresql
+        brew install git curl wget openssl
         ;;
     *)
         print_status "WARN" "Unknown OS. Please install dependencies manually:"
         echo "  - Git"
         echo "  - Go (1.19+)"
-        echo "  - Node.js (16+)"
+        echo "  - Node.js (18+)"
         echo "  - OpenSSL"
-        echo "  - PostgreSQL"
+        echo "  - PostgreSQL (14+)"
         ;;
 esac
 
 echo ""
-echo "=== 2. Installing Go ==="
+echo "=== 2. Checking Go ==="
 
-if ! command -v go >/dev/null 2>&1; then
-    print_status "INFO" "Installing Go..."
+# Function to install Go based on OS
+install_go() {
     GO_VERSION="1.21.0"
     GO_ARCH="linux-amd64"
     
@@ -104,41 +147,109 @@ if ! command -v go >/dev/null 2>&1; then
     export PATH=$PATH:/usr/local/go/bin
     
     print_status "OK" "Go installed successfully"
-else
-    print_status "OK" "Go already installed"
-fi
+}
+
+check_version_and_confirm "go" "1.19" "go version" "install_go"
 
 echo ""
-echo "=== 3. Installing Node.js ==="
+echo "=== 3. Checking Node.js ==="
 
-if ! command -v node >/dev/null 2>&1; then
-    print_status "INFO" "Installing Node.js..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+# Function to install Node.js based on OS
+install_nodejs() {
+    case $OS in
+        "debian")
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            ;;
+        "redhat")
+            curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+            sudo yum install -y nodejs
+            ;;
+        "macos")
+            brew install node@18
+            ;;
+        *)
+            print_status "ERROR" "Please install Node.js 18+ manually for your OS"
+            exit 1
+            ;;
+    esac
     print_status "OK" "Node.js installed successfully"
-else
-    print_status "OK" "Node.js already installed"
-fi
+}
+
+check_version_and_confirm "node" "18" "node --version" "install_nodejs"
 
 echo ""
-echo "=== 4. Setting up PostgreSQL ==="
+echo "=== 4. Checking PostgreSQL ==="
 
-case $OS in
-    "debian")
-        sudo systemctl start postgresql
-        sudo systemctl enable postgresql
-        ;;
-    "redhat")
-        sudo postgresql-setup --initdb
-        sudo systemctl start postgresql
-        sudo systemctl enable postgresql
-        ;;
-    "macos")
-        brew services start postgresql
-        ;;
-esac
+# Function to install PostgreSQL based on OS
+install_postgresql() {
+    case $OS in
+        "debian")
+            sudo apt install -y postgresql postgresql-contrib
+            sudo systemctl start postgresql
+            sudo systemctl enable postgresql
+            ;;
+        "redhat")
+            sudo dnf install -y postgresql-server postgresql-contrib
+            sudo postgresql-setup --initdb
+            sudo systemctl start postgresql
+            sudo systemctl enable postgresql
+            ;;
+        "macos")
+            brew install postgresql@14
+            brew services start postgresql@14
+            ;;
+        *)
+            print_status "ERROR" "Please install PostgreSQL 14+ manually for your OS"
+            exit 1
+            ;;
+    esac
+    print_status "OK" "PostgreSQL installed and started"
+}
 
-print_status "OK" "PostgreSQL service started"
+# Check if PostgreSQL is installed and running
+if command -v psql >/dev/null 2>&1; then
+    print_status "INFO" "PostgreSQL is installed"
+    
+    # Try to get version
+    PG_VERSION=$(psql --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1 || echo "unknown")
+    echo -e "${BLUE}ℹ${NC} Current version: $PG_VERSION"
+    echo -e "${BLUE}ℹ${NC} Minimum required: 14"
+    
+    # Check if service is running
+    if pg_isready >/dev/null 2>&1; then
+        print_status "OK" "PostgreSQL service is running"
+    else
+        print_status "WARN" "PostgreSQL service is not running"
+        case $OS in
+            "debian"|"redhat")
+                sudo systemctl start postgresql
+                ;;
+            "macos")
+                brew services start postgresql
+                ;;
+        esac
+    fi
+    
+    read -p "Continue with current PostgreSQL installation? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "INFO" "Please install/update PostgreSQL manually and run this script again"
+        exit 1
+    fi
+else
+    print_status "WARN" "PostgreSQL is not installed"
+    echo -e "${BLUE}ℹ${NC} Minimum required: 14"
+    
+    read -p "Install PostgreSQL automatically? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "INFO" "Please install PostgreSQL manually and run this script again"
+        exit 1
+    fi
+    
+    install_postgresql
+fi
 
 echo ""
 echo "=== 5. Building CertM3 ==="
