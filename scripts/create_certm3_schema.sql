@@ -426,6 +426,14 @@ ALTER TABLE ONLY public.user_groups
 
 
 --
+-- Insert default groups
+--
+
+INSERT INTO public.groups (name, display_name, description, status, created_at, created_by, updated_at, updated_by) 
+VALUES ('users', 'Users', 'Default group for all registered users', 'active', CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, 'system');
+
+
+--
 -- PostgreSQL database dump complete
 --
 
