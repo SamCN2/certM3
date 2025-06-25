@@ -6,13 +6,41 @@ This guide explains how to configure CertM3 to use a new base URL across all com
 
 **For development, you can use CertM3 as-is without any configuration changes!** The default domain `urp.ogt11.com` resolves to `127.0.0.1` and `::1`, making it perfect for local development while still using proper FQDNs.
 
-Simply add to your `/etc/hosts` file:
+### Step 1: DNS Configuration
+
+Add to your `/etc/hosts` file:
 ```
 127.0.0.1 urp.ogt11.com
 ::1 urp.ogt11.com
 ```
 
-This allows you to:
+### Step 2: SSL Certificate Setup
+
+Since you won't have access to the `urp.ogt11.com` SSL certificate, create a self-signed certificate:
+
+```bash
+# Create certificate directory
+sudo mkdir -p /etc/certs/urp.ogt11.com
+
+# Generate self-signed certificate for urp.ogt11.com
+sudo openssl req -x509 -newkey rsa:4096 -keyout /etc/certs/urp.ogt11.com/privkey.pem -out /etc/certs/urp.ogt11.com/fullchain.pem -days 365 -nodes -subj "/CN=urp.ogt11.com"
+
+# Set proper permissions
+sudo chmod 644 /etc/certs/urp.ogt11.com/fullchain.pem
+sudo chmod 600 /etc/certs/urp.ogt11.com/privkey.pem
+```
+
+### Step 3: Browser Certificate Acceptance
+
+When you first access `https://urp.ogt11.com`, your browser will show a security warning. You'll need to:
+
+1. Click "Advanced" or "Show Details"
+2. Click "Proceed to urp.ogt11.com (unsafe)" or similar
+3. The browser will remember this choice for future visits
+
+**Note:** This is safe for development since you control the domain and certificate.
+
+This setup allows you to:
 - Use HTTPS with proper certificates
 - Test the full production-like setup
 - Avoid localhost:port configurations
