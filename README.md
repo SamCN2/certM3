@@ -62,6 +62,18 @@ cd certM3
 ./scripts/fresh-install.sh
 ```
 
+### Development Setup
+
+**For development, you can use CertM3 as-is!** The default domain `urp.ogt11.com` resolves to `127.0.0.1` and `::1`, making it perfect for local development while still using proper FQDNs.
+
+Simply add to your `/etc/hosts` file:
+```
+127.0.0.1 urp.ogt11.com
+::1 urp.ogt11.com
+```
+
+This allows you to use HTTPS with proper certificates and test the full production-like setup without any configuration changes.
+
 ### Manual Installation
 
 For detailed installation instructions, see:

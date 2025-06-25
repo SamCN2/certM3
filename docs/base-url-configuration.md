@@ -2,6 +2,22 @@
 
 This guide explains how to configure CertM3 to use a new base URL across all components. CertM3 is designed to use FQDNs (Fully Qualified Domain Names) even in development environments, treating all deployments as production-like for network configuration.
 
+## Quick Start for Development
+
+**For development, you can use CertM3 as-is without any configuration changes!** The default domain `urp.ogt11.com` resolves to `127.0.0.1` and `::1`, making it perfect for local development while still using proper FQDNs.
+
+Simply add to your `/etc/hosts` file:
+```
+127.0.0.1 urp.ogt11.com
+::1 urp.ogt11.com
+```
+
+This allows you to:
+- Use HTTPS with proper certificates
+- Test the full production-like setup
+- Avoid localhost:port configurations
+- Maintain consistent behavior across environments
+
 ## Overview
 
 CertM3 uses FQDNs throughout its configuration to ensure:
