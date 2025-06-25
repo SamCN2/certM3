@@ -17,7 +17,7 @@ This guide provides a step-by-step checklist for deploying the complete CertM3 c
 **Purpose**: Store certificate requests, user data, and audit logs
 
 #### Tasks:
-- [ ] Install PostgreSQL 12+ (`apt install postgresql postgresql-contrib`)
+- [ ] Install PostgreSQL 14+ (`apt install postgresql postgresql-contrib`)
 - [ ] Create database user and database
 - [ ] Configure database connection settings
 - [ ] Run database migrations
@@ -127,7 +127,7 @@ curl -X POST https://urp.ogt11.com/app/initiate-request \
 ---
 
 ### 🖥️ Step 5: Web SPA
-**Component**: React/TypeScript Web Application
+**Component**: Vanilla JavaScript/TypeScript Web Application
 **Purpose**: User interface for certificate management
 
 #### Tasks:
@@ -176,12 +176,17 @@ curl https://urp.ogt11.com/static/js/main.js
 │   (Static Files)  │  │  (Go Service)     │  │  (Node.js/TS)     │
 └───────────────────┘  └─────────┬─────────┘  └─────────┬─────────┘
                                  │                      │
-                                 └──────────┬───────────┘
-                                            │
-                                 ┌─────────▼─────────┐
-                                 │   PostgreSQL DB   │
-                                 │   (Data Storage)  │
-                                 └───────────────────┘
+                                 │                      │
+                    ┌─────────────▼─────────────┐       │
+                    │   Certificate Signer      │       │
+                    │   (Unix Socket)           │       │ (unix socket or mTLS)
+                    └───────────────────────────┘       │
+                                                        │
+                                                        │
+                                  ┌─────────────────────▼─────────────────────┐
+                                  │              PostgreSQL DB                │
+                                  │              (Data Storage)               │
+                                  └───────────────────────────────────────────┘
 ```
 
 ## Component Dependencies
@@ -189,13 +194,14 @@ curl https://urp.ogt11.com/static/js/main.js
 ### Startup Order
 1. **Database** (PostgreSQL) - Required by Backend API
 2. **Backend API** (Node.js) - Required by Middleware
-3. **Middleware** (Go) - Required by Web SPA
-4. **Nginx** - Can start anytime, but needs all services running
-5. **Web SPA** - Depends on all APIs being available
+3. **Certificate Signer** - Required by Middleware
+4. **Middleware** (Go) - Required by Web SPA
+5. **Nginx** - Can start anytime, but needs all services running
+6. **Web SPA** - Depends on all APIs being available
 
 ### Configuration Dependencies
 - **Backend API** needs database connection
-- **Middleware** needs backend API URL
+- **Middleware** needs backend API URL and certificate signer socket
 - **Web SPA** needs middleware API URL
 - **Nginx** needs all service URLs and SSL certificates
 
