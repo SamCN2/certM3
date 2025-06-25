@@ -131,6 +131,7 @@ interface ApiConfig {
 - **[Installation Guide](Install/README.md)** - Complete setup instructions
 - **[Database Setup](Install/database-setup.md)** - PostgreSQL configuration
 - **[CA Management](../CA-mgmt/README.md)** - Certificate Authority management
+- **[Base URL Configuration](docs/base-url-configuration.md)** - Domain customization guide
 - **[Production Checklist](../docs/production-checklist.md)** - Production deployment guide
 - **[API Documentation](../docs/api-documentation.md)** - API reference
 - **API Explorer**: Available at `/explorer` when the API is running
