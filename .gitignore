@@ -109,3 +109,24 @@ src/mw/bin/
 *.test.js
 *.test.ts
 !src/mw/test/
+
+# Build artifacts and compiled files
+src/app.deprecated/dist/
+src/app.deprecated/semantic/dist/
+*.min.js
+*.min.css
+*.map
+
+# Temporary and backup files
+docs.aux/
+*.bak
+*.output.txt
+*.aux
+
+# Lock files (can be regenerated)
+package-lock.json
+yarn.lock
+
+# Environment files
+*.env
+!src/mw/test/test.env.example
