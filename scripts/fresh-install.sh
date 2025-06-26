@@ -262,7 +262,7 @@ cd ../..
 if [ -f "src/api/package.json" ]; then
     print_status "INFO" "Building API..."
     cd src/api
-    npm install
+    npm install --legacy-peer-deps --ignore-engines
     print_status "OK" "API built successfully"
     cd ../..
 else
@@ -273,7 +273,7 @@ fi
 if [ -f "src/web/package.json" ]; then
     print_status "INFO" "Building web frontend..."
     cd src/web
-    npm install
+    npm install --legacy-peer-deps --ignore-engines
     print_status "OK" "Web frontend built successfully"
     cd ../..
 else

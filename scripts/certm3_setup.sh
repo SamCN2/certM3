@@ -146,7 +146,7 @@ echo "=== 5. Building Application Components ==="
 if [ -f "src/api/package.json" ]; then
     print_status "INFO" "Building API..."
     cd src/api
-    npm install
+    npm install --legacy-peer-deps --ignore-engines
     npm run build
     cd ../..
     print_status "OK" "API built successfully"
@@ -171,7 +171,7 @@ fi
 if [ -f "src/web/package.json" ]; then
     print_status "INFO" "Building web frontend..."
     cd src/web
-    npm install
+    npm install --legacy-peer-deps --ignore-engines
     npm run build
     cd ../..
     print_status "OK" "Web frontend built successfully"

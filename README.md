@@ -127,9 +127,11 @@ For detailed installation instructions, see:
 ### Prerequisites
 - **Operating System**: Linux (Ubuntu 20.04+, CentOS 8+, or similar)
 - **Go**: Version 1.21 or later
-- **Node.js**: Version 18 or later
+- **Node.js**: Version 18 or later (Node.js 22+ supported with compatibility flags)
 - **PostgreSQL**: Version 14 or later
 - **OpenSSL**: Latest version
+
+**Note**: The installation scripts use `--legacy-peer-deps` and `--ignore-engines` flags for npm to handle compatibility with newer Node.js versions and LoopBack 4 packages. This ensures the system works across different Node.js versions while maintaining functionality.
 
 ### Verification
 

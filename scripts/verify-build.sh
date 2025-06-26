@@ -111,6 +111,7 @@ fi
 
 echo ""
 echo "=== 4. Building Components ==="
+echo "Note: Using --legacy-peer-deps and --ignore-engines for npm compatibility"
 
 # Build middleware
 echo "Building middleware..."
@@ -132,7 +133,7 @@ cd ../..
 if [ -f "src/api/package.json" ]; then
     echo "Building API..."
     cd src/api
-    if npm install; then
+    if npm install --legacy-peer-deps --ignore-engines; then
         print_status "OK" "API dependencies installed"
     else
         print_status "FAIL" "API dependencies installation failed"
@@ -146,8 +147,13 @@ fi
 if [ -f "src/web/package.json" ]; then
     echo "Building web frontend..."
     cd src/web
-    if npm install; then
+    if npm install --legacy-peer-deps --ignore-engines; then
         print_status "OK" "Web frontend dependencies installed"
+        if npm run build; then
+            print_status "OK" "Web frontend built successfully"
+        else
+            print_status "FAIL" "Web frontend build failed"
+        fi
     else
         print_status "FAIL" "Web frontend dependencies installation failed"
     fi
