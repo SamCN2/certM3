@@ -59,14 +59,35 @@ For a fully automated installation on a fresh system:
 ```bash
 git clone https://github.com/your-org/certM3.git
 cd certM3
-./scripts/fresh-install.sh
+./scripts/install-dependencies.sh  # Install system dependencies
+./scripts/certm3_setup.sh          # Set up application and database
 ```
 
-### Development Setup
+### FQDN Configuration
+
+CertM3 uses FQDNs throughout the system for proper SSL/TLS configuration. You have two options:
+
+#### Option 1: Use Default Development Domain (Recommended for Development)
 
 **For development, you can use CertM3 as-is!** The default domain `urp.ogt11.com` resolves to `127.0.0.1` and `::1`, making it perfect for local development while still using proper FQDNs.
 
-#### Step 1: DNS Configuration
+#### Option 2: Configure Your Own Domain
+
+Use the interactive FQDN configuration script:
+
+```bash
+./scripts/configure-fqdn.sh
+```
+
+This script will:
+- Replace all occurrences of the default domain with your domain
+- Guide you through SSL certificate setup
+- Help with DNS configuration
+- Provide verification steps
+
+### Development Setup
+
+#### Step 1: DNS Configuration (if using default domain)
 
 Add to your `/etc/hosts` file:
 ```
@@ -159,6 +180,26 @@ interface ApiConfig {
   };
 }
 ```
+
+## Scripts Reference
+
+### Installation Scripts
+- `scripts/install-dependencies.sh` - Install system dependencies (Go, Node.js, PostgreSQL)
+- `scripts/certm3_setup.sh` - Set up application, database, and services
+- `scripts/verify-build.sh` - Verify installation and build all components
+
+### Configuration Scripts
+- `scripts/configure-fqdn.sh` - Interactive FQDN configuration
+- `scripts/template-fqdn.sh` - Advanced FQDN templating (template/restore modes)
+- `scripts/configure-base-url.sh` - Legacy base URL configuration
+
+### Database Scripts
+- `scripts/create_certm3_schema.sql` - Database schema creation
+- `scripts/get-db-schema.sh` - Generate database documentation
+
+### Deployment Scripts
+- `scripts/deploy.sh` - Production deployment script
+- `ecosystem.config.js` - PM2 process management configuration
 
 ## Documentation
 
