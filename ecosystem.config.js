@@ -19,8 +19,8 @@ module.exports = {
   },
   {
     name: 'certm3-app',
-    script: 'src/mw/bin/certm3-app',
-    cwd: '.',
+    script: 'bin/certm3-app',
+    cwd: 'src/mw',
     watch: false,
     env: {
       NODE_ENV: 'production',
@@ -32,11 +32,14 @@ module.exports = {
     merge_logs: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     max_memory_restart: '1G',
+    max_restarts: 10,
+    min_uptime: '10s',
+    restart_delay: 5000,
   },
   {
     name: 'certm3-signer',
-    script: 'src/mw/bin/certm3-signer',
-    cwd: '.',
+    script: 'bin/certm3-signer',
+    cwd: 'src/mw',
     watch: false,
     env: {
       NODE_ENV: 'production',
@@ -48,5 +51,8 @@ module.exports = {
     merge_logs: true,
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     max_memory_restart: '1G',
+    max_restarts: 10,
+    min_uptime: '10s',
+    restart_delay: 5000,
   }],
 }; 
