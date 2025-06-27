@@ -85,6 +85,24 @@ This script will:
 - Help with DNS configuration
 - Provide verification steps
 
+This allows you to use HTTPS with proper certificates and test the full production-like setup without any configuration changes.
+
+### Nginx Configuration
+
+After configuring the FQDN, you need to update the nginx configuration with the correct paths for your system:
+
+```bash
+./scripts/configure-nginx-paths.sh
+```
+
+This script will:
+- Update hardcoded paths in the nginx configuration
+- Configure project root, SSL certificate, and CA certificate paths
+- Validate the nginx configuration syntax
+- Create backups of the original configuration
+
+**Note**: Run this script after `configure-fqdn.sh` to ensure all paths are correctly set for your deployment.
+
 ### Development Setup
 
 #### Step 1: DNS Configuration (if using default domain)
@@ -236,6 +254,7 @@ interface ApiConfig {
 
 ### Configuration Scripts
 - `scripts/configure-fqdn.sh` - Interactive FQDN configuration
+- `scripts/configure-nginx-paths.sh` - Configure nginx paths for your system
 - `scripts/template-fqdn.sh` - Advanced FQDN templating (template/restore modes)
 - `scripts/configure-base-url.sh` - Legacy base URL configuration
 

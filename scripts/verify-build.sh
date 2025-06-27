@@ -14,6 +14,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Section counter
+section=0
+
 # Function to print status
 print_status() {
     local status=$1
@@ -54,7 +57,8 @@ check_directory() {
     fi
 }
 
-echo "=== 1. Checking Prerequisites ==="
+((section++))
+echo "=== ${section}. Checking Prerequisites ==="
 
 # Check system requirements
 check_command "go" "Go"
@@ -62,6 +66,7 @@ check_command "node" "Node.js"
 check_command "npm" "npm"
 check_command "openssl" "OpenSSL"
 check_command "git" "Git"
+check_command "nginx" "nginx"
 
 # Check Go version
 GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
@@ -71,8 +76,9 @@ echo -e "${GREEN}✓${NC} Go version: $GO_VERSION"
 NODE_VERSION=$(node --version)
 echo -e "${GREEN}✓${NC} Node.js version: $NODE_VERSION"
 
+((section++))
 echo ""
-echo "=== 2. Checking Project Structure ==="
+echo "=== ${section}. Checking Project Structure ==="
 
 # Check essential directories
 check_directory "src/api" "API"
@@ -81,8 +87,9 @@ check_directory "src/web" "Web Frontend"
 check_directory "CA-mgmt" "CA Management"
 check_directory "Install" "Installation Guides"
 
+((section++))
 echo ""
-echo "=== 3. Checking Source Files ==="
+echo "=== ${section}. Checking Source Files ==="
 
 # Check essential source files
 if [ -f "src/mw/cmd/certm3-app/main.go" ]; then
@@ -109,8 +116,9 @@ else
     print_status "FAIL" "Database schema missing"
 fi
 
+((section++))
 echo ""
-echo "=== 4. Building Components ==="
+echo "=== ${section}. Building Components ==="
 echo "Note: Using --legacy-peer-deps and --ignore-engines for npm compatibility"
 
 # Build middleware
@@ -162,8 +170,9 @@ else
     print_status "WARN" "Web frontend package.json not found, skipping web build"
 fi
 
+((section++))
 echo ""
-echo "=== 5. Checking Configuration Files ==="
+echo "=== ${section}. Checking Configuration Files ==="
 
 # Check configuration files
 if [ -f "src/mw/config.yaml.example" ]; then
@@ -184,8 +193,27 @@ else
     print_status "FAIL" "Database setup guide missing"
 fi
 
+((section++))
 echo ""
-echo "=== 6. Testing CA Management Scripts ==="
+echo "=== ${section}. NGINX Configuration ==="
+
+# Check and configure nginx
+if [ -f "nginx/certm3.conf" ]; then
+    # Test config syntax first
+    if sudo nginx -t -c nginx/certm3.conf 2>/dev/null; then
+        sudo cp nginx/certm3.conf /etc/nginx/sites-available/certm3
+        sudo ln -sf /etc/nginx/sites-available/certm3 /etc/nginx/sites-enabled/
+        print_status "OK" "Nginx configuration installed and validated"
+    else
+        print_status "FAIL" "Nginx configuration syntax error"
+    fi
+else
+    print_status "WARN" "Nginx configuration not found"
+fi
+
+((section++))
+echo ""
+echo "=== ${section}. Testing CA Management Scripts ==="
 
 # Test CA management scripts
 cd CA-mgmt
@@ -208,8 +236,9 @@ else
 fi
 cd ..
 
+((section++))
 echo ""
-echo "=== 7. Checking Documentation ==="
+echo "=== ${section}. Checking Documentation ==="
 
 # Check documentation
 if [ -f "README.md" ]; then
@@ -238,6 +267,7 @@ echo "Next steps:"
 echo "1. Set up PostgreSQL database (see Install/database-setup.md)"
 echo "2. Configure CA management (see CA-mgmt/README.md)"
 echo "3. Configure middleware (see src/mw/config.yaml.example)"
-echo "4. Start services"
+echo "4. Configure nginx paths (see scripts/configure-nginx-paths.sh)"
+echo "5. Start services"
 echo ""
 echo "For detailed setup instructions, see the documentation in each component directory." 
