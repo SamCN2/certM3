@@ -98,8 +98,6 @@ frontend-specs.md
 
 # Deprecated and development directories
 src/mw/app.deprecated/
-src/web/
-static/
 
 # Binary files
 src/mw/certm3-app
@@ -125,6 +123,7 @@ docs.aux/
 
 # Lock files (can be regenerated)
 package-lock.json
+!src/web/package-lock.json
 yarn.lock
 
 # Environment files

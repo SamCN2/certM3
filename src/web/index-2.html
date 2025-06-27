@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 Username Check</title>
+    <style>
+        :root {
+            --primary-color: #1976d2;
+            --error-color: #d32f2f;
+            --success-color: #388e3c;
+            --text-color: #333;
+            --background-color: #f5f5f5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .error {
+            color: var(--error-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .success {
+            color: var(--success-color);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Hide views by default */
+        .view {
+            display: none;
+        }
+
+        /* Show active view */
+        .view.active {
+            display: block;
+        }
+
+        /* Validation form specific styles */
+        .validation-form {
+            margin-top: 2rem;
+        }
+
+        .validation-form .form-group {
+            max-width: 400px;
+        }
+
+        .validation-form input {
+            font-family: monospace;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app">
+            <!-- Initial Request Form -->
+            <div id="requestForm" class="view card">
+                <h2>Request Certificate</h2>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                    <div id="username-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                    <div id="email-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="displayName">Display Name</label>
+                    <input type="text" id="displayName" name="displayName" required>
+                    <div id="displayName-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <button id="submitButton" type="submit" disabled>Request Account</button>
+                    <div id="submit-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Validation Form -->
+            <div id="validationForm" class="view card">
+                <h2>Validate Your Email</h2>
+                <p>Please check your email for the validation code and enter it below.</p>
+                <div class="form-group">
+                    <label for="challengeToken">Validation Code</label>
+                    <input type="text" id="challengeToken" name="challengeToken" required 
+                           placeholder="Enter the code from your email">
+                    <div id="challenge-feedback"></div>
+                </div>
+                <div class="form-group">
+                    <button id="validateButton" type="submit">Validate Email</button>
+                    <div id="validate-feedback"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- Load application -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // View management
+            const views = {
+                requestForm: document.getElementById('requestForm'),
+                validationForm: document.getElementById('validationForm')
+            };
+
+            function showView(viewId) {
+                Object.values(views).forEach(view => view.classList.remove('active'));
+                views[viewId].classList.add('active');
+            }
+
+            // Check URL parameters for validation state
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestId = urlParams.get('requestId');
+            const challengeToken = urlParams.get('challengeToken');
+
+            if (requestId && challengeToken) {
+                // User arrived via email link
+                showView('validationForm');
+                document.getElementById('challengeToken').value = challengeToken;
+                validateEmail(requestId, challengeToken);
+            } else {
+                // Show initial request form
+                showView('requestForm');
+            }
+
+            // Request form elements
+            const usernameInput = document.getElementById('username');
+            const emailInput = document.getElementById('email');
+            const displayNameInput = document.getElementById('displayName');
+            const submitButton = document.getElementById('submitButton');
+            const usernameFeedback = document.getElementById('username-feedback');
+            const emailFeedback = document.getElementById('email-feedback');
+            const displayNameFeedback = document.getElementById('displayName-feedback');
+            const submitFeedback = document.getElementById('submit-feedback');
+            let debounceTimers = {};
+
+            // Track field validity
+            const fieldValidity = {
+                username: false,
+                email: false,
+                displayName: false
+            };
+
+            // Function to update submit button state
+            const updateSubmitButton = () => {
+                const allValid = Object.values(fieldValidity).every(valid => valid);
+                submitButton.disabled = !allValid;
+            };
+
+            // Username check handler
+            usernameInput.addEventListener('input', async (event) => {
+                const username = event.target.value.trim();
+                
+                clearTimeout(debounceTimers.username);
+                usernameFeedback.textContent = '';
+                usernameFeedback.className = '';
+                fieldValidity.username = false;
+                updateSubmitButton();
+                
+                if (username.length < 3) {
+                    return;
+                }
+
+                debounceTimers.username = setTimeout(async () => {
+                    try {
+                        console.log('Checking username:', username);
+                        const response = await axios.get(`/app/check-username/${encodeURIComponent(username)}`);
+                        console.log('Response:', response.data);
+                        
+                        if (response.data.available) {
+                            usernameFeedback.textContent = 'Username is available';
+                            usernameFeedback.className = 'success';
+                            fieldValidity.username = true;
+                        } else {
+                            usernameFeedback.textContent = 'Username is taken';
+                            usernameFeedback.className = 'error';
+                            fieldValidity.username = false;
+                        }
+                        updateSubmitButton();
+                    } catch (error) {
+                        console.error('Error checking username:', error);
+                        usernameFeedback.textContent = 'Error checking username';
+                        usernameFeedback.className = 'error';
+                        fieldValidity.username = false;
+                        updateSubmitButton();
+                    }
+                }, 300);
+            });
+
+            // Email validation handler
+            emailInput.addEventListener('input', (event) => {
+                const email = event.target.value.trim();
+                clearTimeout(debounceTimers.email);
+                emailFeedback.textContent = '';
+                emailFeedback.className = '';
+                fieldValidity.email = false;
+                updateSubmitButton();
+
+                if (!email) {
+                    return;
+                }
+
+                debounceTimers.email = setTimeout(() => {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (emailRegex.test(email)) {
+                        emailFeedback.textContent = 'Valid email format';
+                        emailFeedback.className = 'success';
+                        fieldValidity.email = true;
+                    } else {
+                        emailFeedback.textContent = 'Please enter a valid email address';
+                        emailFeedback.className = 'error';
+                        fieldValidity.email = false;
+                    }
+                    updateSubmitButton();
+                }, 300);
+            });
+
+            // Display name validation handler
+            displayNameInput.addEventListener('input', (event) => {
+                const displayName = event.target.value.trim();
+                clearTimeout(debounceTimers.displayName);
+                displayNameFeedback.textContent = '';
+                displayNameFeedback.className = '';
+                fieldValidity.displayName = false;
+                updateSubmitButton();
+
+                if (!displayName) {
+                    return;
+                }
+
+                debounceTimers.displayName = setTimeout(() => {
+                    if (displayName.length < 2) {
+                        displayNameFeedback.textContent = 'Display name must be at least 2 characters';
+                        displayNameFeedback.className = 'error';
+                        fieldValidity.displayName = false;
+                    } else if (displayName.length > 50) {
+                        displayNameFeedback.textContent = 'Display name must be less than 50 characters';
+                        displayNameFeedback.className = 'error';
+                        fieldValidity.displayName = false;
+                    } else {
+                        displayNameFeedback.textContent = 'Display name looks good';
+                        displayNameFeedback.className = 'success';
+                        fieldValidity.displayName = true;
+                    }
+                    updateSubmitButton();
+                }, 300);
+            });
+
+            // Form submission handler
+            submitButton.addEventListener('click', async () => {
+                const username = usernameInput.value.trim();
+                const email = emailInput.value.trim();
+                const displayName = displayNameInput.value.trim();
+
+                submitButton.disabled = true;
+                submitFeedback.textContent = 'Submitting request...';
+                submitFeedback.className = '';
+
+                try {
+                    console.log('Submitting request with data:', { username, email, displayName });
+                    const response = await axios.post('/app/initiate-request', {
+                        username,
+                        email,
+                        displayName
+                    });
+                    console.log('Response:', response.data);
+
+                    if (response.data && response.data.id) {
+                        // Store request ID for validation
+                        window.requestId = response.data.id;
+                        
+                        // Show validation form
+                        showView('validationForm');
+                        
+                        // Clear request form
+                        usernameInput.value = '';
+                        emailInput.value = '';
+                        displayNameInput.value = '';
+                        fieldValidity.username = false;
+                        fieldValidity.email = false;
+                        fieldValidity.displayName = false;
+                        updateSubmitButton();
+                    } else {
+                        console.error('Unexpected response format:', response.data);
+                        throw new Error('Unexpected response format from server');
+                    }
+                } catch (error) {
+                    console.error('Error submitting request:', error);
+                    console.error('Error details:', {
+                        message: error.message,
+                        response: error.response?.data,
+                        status: error.response?.status
+                    });
+                    
+                    let errorMessage = 'Error submitting request';
+                    if (error.response?.data?.error) {
+                        errorMessage = error.response.data.error;
+                    } else if (error.message && error.message !== 'Error submitting request') {
+                        errorMessage = error.message;
+                    }
+                    
+                    submitFeedback.textContent = errorMessage;
+                    submitFeedback.className = 'error';
+                    submitButton.disabled = false;
+                }
+            });
+
+            // Validation form elements
+            const challengeInput = document.getElementById('challengeToken');
+            const validateButton = document.getElementById('validateButton');
+            const challengeFeedback = document.getElementById('challenge-feedback');
+            const validateFeedback = document.getElementById('validate-feedback');
+
+            // Email validation handler
+            async function validateEmail(requestId, challengeToken) {
+                validateButton.disabled = true;
+                validateFeedback.textContent = 'Validating email...';
+                validateFeedback.className = '';
+
+                try {
+                    const response = await axios.post('/app/validate-email', {
+                        requestId,
+                        challengeToken
+                    });
+
+                    if (response.data && response.data.token) {
+                        validateFeedback.textContent = 'Email validated successfully!';
+                        validateFeedback.className = 'success';
+                        // Store the JWT token for the next step
+                        window.jwt = response.data.token;
+                        // TODO: Proceed to CSR generation view
+                    } else {
+                        throw new Error('Unexpected response format from server');
+                    }
+                } catch (error) {
+                    console.error('Error validating email:', error);
+                    validateFeedback.textContent = error.response?.data?.error || error.message || 'Error validating email';
+                    validateFeedback.className = 'error';
+                    validateButton.disabled = false;
+                }
+            }
+
+            // Manual validation submission
+            validateButton.addEventListener('click', () => {
+                const challengeToken = challengeInput.value.trim();
+                if (!challengeToken) {
+                    challengeFeedback.textContent = 'Please enter the validation code';
+                    challengeFeedback.className = 'error';
+                    return;
+                }
+
+                validateEmail(window.requestId, challengeToken);
+            });
+        });
+    </script>
+</body>
+</html> 

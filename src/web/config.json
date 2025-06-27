@@ -1,0 +1,5 @@
+{
+  "baseDir": "../../static",
+  "baseUrl": "/certm3",
+  "apiBaseUrl": "/app"
+} 
