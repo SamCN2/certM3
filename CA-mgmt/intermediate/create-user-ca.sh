@@ -17,11 +17,15 @@ mkdir -p "$CA_DIR"
 KEY_FILE="$CA_DIR/ca.key"
 CSR_FILE="$CA_DIR/ca.csr"
 
+# Create full subject with required fields to match root CA policy
+FULL_SUBJECT="/C=US/ST=State/L=City/O=Organization$SUBJECT"
+
 openssl genrsa -out "$KEY_FILE" "$KEY_BITS"
 chmod 600 "$KEY_FILE"
-openssl req -new -key "$KEY_FILE" -out "$CSR_FILE" -subj "$SUBJECT"
+openssl req -new -key "$KEY_FILE" -out "$CSR_FILE" -subj "$FULL_SUBJECT"
 
 echo "User intermediate CA key and CSR created."
 echo "  Key: $KEY_FILE"
 echo "  CSR: $CSR_FILE"
+echo "  Subject: $FULL_SUBJECT"
 echo "Sign the CSR with the root CA (see CA-mgmt/root/sign-intermediate-ca.sh)." 
