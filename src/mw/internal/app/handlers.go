@@ -853,7 +853,7 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	// Create Unix domain socket connection to signer
-	conn, err := net.Dial("unix", "/var/run/certM3/mw/signer.sock")
+	conn, err := net.Dial("unix", h.config.Signer.SocketPath)
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,

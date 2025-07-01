@@ -102,7 +102,7 @@ func RunTestAPI(h *Handler, log *logging.Logger) error {
 	time.Sleep(2 * time.Second)
 
 	// Find the most recent test email for the username
-	emailDir := "/var/spool/certM3/test-emails/"
+	emailDir := h.config.AppServer.TestEmailDir
 	pattern := fmt.Sprintf("*-%s-validation.txt", username)
 
 	// Try multiple times to find the email file
@@ -258,7 +258,7 @@ func RunTestAPI(h *Handler, log *logging.Logger) error {
 	}
 
 	// Create Unix domain socket connection to signer
-	conn, err := net.Dial("unix", "/var/run/certM3/mw/signer.sock")
+	conn, err := net.Dial("unix", h.config.Signer.SocketPath)
 	if err != nil {
 		return fmt.Errorf("failed to connect to signer: %v", err)
 	}

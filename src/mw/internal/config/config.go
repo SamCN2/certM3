@@ -33,6 +33,7 @@ type Config struct {
 		MetricsPath     string        `yaml:"metrics_path"`
 		MetricsTimeout  time.Duration `yaml:"metrics_timeout"`
 		LogFile         string        `yaml:"log_file"`
+		TestEmailDir    string        `yaml:"test_email_dir"`
 	} `yaml:"app_server"`
 
 	// Signer configuration
@@ -97,6 +98,9 @@ func Load(configPath string) (*Config, error) {
 	}
 	if config.AppServer.MetricsTimeout == 0 {
 		config.AppServer.MetricsTimeout = 5 * time.Second
+	}
+	if config.AppServer.TestEmailDir == "" {
+		config.AppServer.TestEmailDir = "/var/spool/certM3/test-emails/"
 	}
 
 	// Load JWT secret from file if specified

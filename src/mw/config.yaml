@@ -14,14 +14,13 @@ app_server:
   metrics_enabled: true
   metrics_path: "/metrics"
   metrics_timeout: 5s
+  test_email_dir: "/var/spool/certM3/test-emails/"
 
 # Signer configuration
 signer:
   socket_path: "/var/run/certM3/mw/signer.sock"
-  ca_cert_path: "/home/samcn2/src/certM3/CA/certs/ca-cert.pem"
-  ca_key_path: "/home/samcn2/src/certM3/CA/private/ca-key.pem"
-#  ca_cert_path: "/etc/certs/certM3/CA/certs/ca-cert.pem"
-#  ca_key_path: "/etc/certs/certM3/CA/private/ca-key.pem"
+  ca_cert_path: "/etc/certs/CA/CertM3/user-ca.crt"
+  ca_key_path: "/etc/certs/CA/CertM3/user-ca.key"
   api_url: "https://urp.ogt11.com"
   subject_ou: "CertM3 Test CA"
   subject_o: "CertM3"
