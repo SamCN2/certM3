@@ -38,24 +38,23 @@ type Config struct {
 
 	// Signer configuration
 	Signer struct {
-		SocketPath            string   `yaml:"socket_path"`
-		CACertPath            string   `yaml:"ca_cert_path"`
-		CAKeyPath             string   `yaml:"ca_key_path"`
-		PrivateKeyPasswordVar string   `yaml:"private_key_password_var"`
-		SubjectOU             string   `yaml:"subject_ou"`
-		SubjectO              string   `yaml:"subject_o"`
-		SubjectL              string   `yaml:"subject_l"`
-		SubjectST             string   `yaml:"subject_st"`
-		SubjectC              string   `yaml:"subject_c"`
-		CertValidityDays      int      `yaml:"cert_validity_days"`
-		CRLDistributionURL    string   `yaml:"crl_distribution_url"`
-		AIAIssuerURL          string   `yaml:"aia_issuer_url"`
-		RoleExtensionOID      string   `yaml:"role_extension_oid"`
-		UsernameExtensionOID  string   `yaml:"username_extension_oid"`
-		KeyUsage              []string `yaml:"key_usage"`
-		ExtendedKeyUsage      []string `yaml:"extended_key_usage"`
-		APIURL                string   `yaml:"api_url"`
-		LogFile               string   `yaml:"log_file"`
+		SocketPath           string   `yaml:"socket_path"`
+		CACertPath           string   `yaml:"ca_cert_path"`
+		CAKeyPath            string   `yaml:"ca_key_path"`
+		SubjectOU            string   `yaml:"subject_ou"`
+		SubjectO             string   `yaml:"subject_o"`
+		SubjectL             string   `yaml:"subject_l"`
+		SubjectST            string   `yaml:"subject_st"`
+		SubjectC             string   `yaml:"subject_c"`
+		CertValidityDays     int      `yaml:"cert_validity_days"`
+		CRLDistributionURL   string   `yaml:"crl_distribution_url"`
+		AIAIssuerURL         string   `yaml:"aia_issuer_url"`
+		RoleExtensionOID     string   `yaml:"role_extension_oid"`
+		UsernameExtensionOID string   `yaml:"username_extension_oid"`
+		KeyUsage             []string `yaml:"key_usage"`
+		ExtendedKeyUsage     []string `yaml:"extended_key_usage"`
+		APIURL               string   `yaml:"api_url"`
+		LogFile              string   `yaml:"log_file"`
 	}
 }
 
