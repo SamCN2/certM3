@@ -289,21 +289,40 @@ func (s *Signer) SignCSR(csrPEM []byte, requestedGroups []string) ([]byte, error
 	// Get user's actual groups from backend API
 	actualGroups, err := s.getUserGroups(username)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user groups: %v", err)
+		// Log the error but proceed with actualGroups as empty.
+		// The intersection will be empty, but default groups (username, 'users') will still be added.
+		s.logger.Error("Failed to get user groups from backend for user %s: %v. Proceeding with only default groups and any valid requested groups if backend check was intended to be non-critical for subset requests.", username, err)
+		actualGroups = []string{} // Ensure actualGroups is empty if lookup fails, to prevent partial/stale data issues.
 	}
 
-	// Take intersection of requested and actual groups
-	authorizedGroups := s.intersectGroups(requestedGroups, actualGroups)
+	// Log the groups as requested by the client and as known by the backend
+	s.logger.Info("User %s requested groups: %v", username, requestedGroups)
+	s.logger.Info("User %s actual groups from backend: %v", username, actualGroups)
 
-	// Ensure required groups are included
-	requiredGroups := []string{"users", username}
-	for _, required := range requiredGroups {
-		if !contains(authorizedGroups, required) {
-			authorizedGroups = append(authorizedGroups, required)
-		}
+	// Intersect requestedGroups with actualGroups from the backend.
+	// This gives the set of groups that the user both requested and is legitimately a member of.
+	intersectedGroups := s.intersectGroups(requestedGroups, actualGroups)
+	s.logger.Info("Intersection of requested and actual groups for %s: %v", username, intersectedGroups)
+
+	// Use a set to ensure uniqueness and easily add default groups.
+	finalAuthorizedGroupsSet := make(map[string]struct{})
+	for _, group := range intersectedGroups {
+		finalAuthorizedGroupsSet[group] = struct{}{}
 	}
 
-	s.logger.Info("Authorized groups for user %s: %v", username, authorizedGroups)
+	// Ensure the user's own username and the "users" group are always included.
+	// This is a policy decision. If these should *only* be included if requested AND valid,
+	// then this addition step should be conditional or removed.
+	// Current interpretation: these are mandatory baseline groups.
+	finalAuthorizedGroupsSet[username] = struct{}{}
+	finalAuthorizedGroupsSet["users"] = struct{}{}
+
+	finalAuthorizedGroups := make([]string, 0, len(finalAuthorizedGroupsSet))
+	for groupName := range finalAuthorizedGroupsSet {
+		finalAuthorizedGroups = append(finalAuthorizedGroups, groupName)
+	}
+
+	s.logger.Info("Final authorized groups for user %s to be included in certificate: %v", username, finalAuthorizedGroups)
 
 	// Generate a random serial number
 	serialNumber, err := generateSerialNumber()
@@ -314,48 +333,57 @@ func (s *Signer) SignCSR(csrPEM []byte, requestedGroups []string) ([]byte, error
 	// Create certificate template
 	template := &x509.Certificate{
 		SerialNumber:          serialNumber,
-		Subject:               csr.Subject,
+		Subject:               csr.Subject, // Preserved from CSR
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(365 * 24 * time.Hour), // 1 year validity
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		NotAfter:              time.Now().Add(time.Duration(s.config.Signer.CertValidityDays) * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment, // Consider making this configurable via s.config
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, // Consider making this configurable via s.config
 		BasicConstraintsValid: true,
-		DNSNames:              csr.DNSNames,
-		EmailAddresses:        csr.EmailAddresses,
-		IPAddresses:           csr.IPAddresses,
-		URIs:                  csr.URIs,
-		// Don't preserve original extensions - they may have ASN.1 parsing issues
-		// We'll add only the group extension
+		IsCA:                  false,
+
+		// Fields from CSR
+		DNSNames:       csr.DNSNames,
+		EmailAddresses: csr.EmailAddresses,
+		IPAddresses:    csr.IPAddresses,
+		URIs:           csr.URIs,
+		PublicKey:      csr.PublicKey, // This is critical! Must use PublicKey from CSR.
+
+		// Extensions:
+		// Start with an empty slice. Policy for preserving other CSR extensions can be added here if needed.
 		Extensions: []pkix.Extension{},
 	}
 
-	// Add group extension
-	groupExt, err := s.createGroupExtension(authorizedGroups)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create group extension: %v", err)
+	// Add group extension using the finalAuthorizedGroups
+	if len(finalAuthorizedGroups) > 0 {
+		groupExt, errGroupExt := s.createGroupExtension(finalAuthorizedGroups)
+		if errGroupExt != nil {
+			return nil, fmt.Errorf("failed to create group extension: %v", errGroupExt)
+		}
+		template.Extensions = append(template.Extensions, groupExt)
+	} else {
+		s.logger.Warn("No authorized groups for user %s after intersection and addition of defaults; group extension will be omitted.", username)
 	}
-	template.Extensions = append(template.Extensions, groupExt)
 
-	s.logger.Info("Added group extension to certificate template. Total extensions: %d", len(template.Extensions))
+	s.logger.Info("Certificate template for user %s prepared with %d extensions.", username, len(template.Extensions))
 	for i, ext := range template.Extensions {
-		s.logger.Info("Extension %d: OID=%v, Critical=%v, Value length=%d", i, ext.Id, ext.Critical, len(ext.Value))
+		s.logger.Info("Template Extension %d for %s: OID=%v, Critical=%v, Value length=%d", i, username, ext.Id, ext.Critical, len(ext.Value))
 	}
 
-	// Create the certificate
-	certDER, err := x509.CreateCertificate(nil, template, s.caCert, csr.PublicKey, s.caKey)
+	// Create the certificate using CA cert & key, template, and crucially the CSR's Public Key
+	certDER, err := x509.CreateCertificate(rand.Reader, template, s.caCert, csr.PublicKey, s.caKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate: %v", err)
+		return nil, fmt.Errorf("failed to create certificate for user %s: %v", username, err)
 	}
 
-	// Parse the created certificate to check if extensions were preserved
-	createdCert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse created certificate: %v", err)
-	}
-
-	s.logger.Info("Created certificate has %d extensions", len(createdCert.Extensions))
-	for i, ext := range createdCert.Extensions {
-		s.logger.Info("Created cert extension %d: OID=%v, Critical=%v, Value length=%d", i, ext.Id, ext.Critical, len(ext.Value))
+	// For verification and logging, parse the created certificate
+	createdCert, parseErr := x509.ParseCertificate(certDER)
+	if parseErr != nil {
+		s.logger.Error("Failed to parse the newly created certificate for verification logging (user %s): %v", username, parseErr)
+	} else {
+		s.logger.Info("Final created certificate for user %s has %d extensions.", username, len(createdCert.Extensions))
+		for i, ext := range createdCert.Extensions {
+			s.logger.Info("Final cert extension %d for %s: OID=%v, Critical=%v, Value length=%d, Value (hex): %x", i, username, ext.Id, ext.Critical, len(ext.Value), ext.Value)
+		}
 	}
 
 	// Convert to PEM

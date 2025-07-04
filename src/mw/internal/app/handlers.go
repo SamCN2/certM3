@@ -790,8 +790,10 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 
 	// Parse request body as JSON
 	// The CSR must be sent as a PEM-encoded string in the csr field of a JSON object.
+	// The request can also contain a "groups" field, which is an array of strings.
 	var req struct {
-		CSR string `json:"csr"`
+		CSR    string   `json:"csr"`
+		Groups []string `json:"groups"` // Added to receive requested groups
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		h.logger.LogSecurityEvent("invalid_csr_format", map[string]interface{}{
@@ -845,9 +847,16 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 	}{
 		RequestID: requestID,
 		CSR:       req.CSR,
-		Groups:    []string{},                    // Will be extracted from CSR
+		Groups:    req.Groups, // Pass the groups received in the request
 		Token:     r.Header.Get("Authorization"), // Send the JWT token
 	}
+
+	// Log the groups being sent to the signer
+	h.logger.WithFields(map[string]interface{}{
+		"user_id":        userID,
+		"request_id":     requestID,
+		"requested_groups": req.Groups,
+	}).Info("Sending CSR and requested groups to signer service")
 
 	// Send request to signer
 	start := time.Now()
