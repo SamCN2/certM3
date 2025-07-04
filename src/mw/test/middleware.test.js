@@ -150,28 +150,12 @@ describe('CertM3 Middleware Tests', () => {
     const csr = forge.pki.createCertificationRequest();
     csr.publicKey = keys.publicKey;
     csr.setSubject([{ name: 'commonName', value: testUsername }]);
-    
-    // Add custom username extension
-    const usernameOid = '1.3.6.1.4.1.10049.1.2';
-    const usernameExt = {
-      id: usernameOid,
-      critical: false,
-      value: forge.util.encodeUtf8(testUsername)
-    };
-    
-    // Add extension using the correct node-forge method
-    csr.setAttributes([{
-      name: 'extensionRequest',
-      extensions: [usernameExt]
-    }]);
-    
+    // No extensions - the signer will add the group extension
     csr.sign(keys.privateKey);
-    
     // Ensure proper PEM encoding with normalized line endings
     const pemCsr = forge.pki.certificationRequestToPem(csr)
       .replace(/\r\n/g, '\n');  // Convert all line endings to Unix format
     console.log('Generated CSR:', pemCsr);
-    
     const submitResponse = await api.post('/app/submit-csr', {
       csr: pemCsr
     }, {
@@ -181,7 +165,8 @@ describe('CertM3 Middleware Tests', () => {
     });
     expect(submitResponse.status).toBe(200);
     expect(submitResponse.data).toHaveProperty('certificate');
-  });
+    console.log('Resultant certificate:', submitResponse.data.certificate);
+  }, 60000);
 
   // Security Tests
   test('/app/submit-csr - Unauthorized CSR submission', async () => {

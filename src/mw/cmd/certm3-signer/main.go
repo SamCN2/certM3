@@ -96,7 +96,7 @@ func main() {
 	}
 
 	// Initialize signer
-	s := signer.New(config, logger, m, caCert, caKey, config.Signer.RoleExtensionOID, config.Signer.UsernameExtensionOID)
+	s := signer.New(config, logger, m, caCert, caKey, config.Signer.GroupExtensionOID)
 
 	// Initialize handler
 	h := signer.NewHandler(logger, m, s)
