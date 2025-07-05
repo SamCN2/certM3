@@ -165,7 +165,7 @@ func (h *Handler) InitiateRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/requests", bytes.NewBuffer(reqBody))
+	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendAPIURL+"/requests", bytes.NewBuffer(reqBody))
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,
@@ -323,7 +323,7 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/requests/"+req.RequestID+"/validate", bytes.NewBuffer(reqBody))
+	backendReq, err := http.NewRequest("POST", h.config.AppServer.BackendAPIURL+"/requests/"+req.RequestID+"/validate", bytes.NewBuffer(reqBody))
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,
@@ -384,7 +384,7 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 
 		// Get request details to get the username
 		start = time.Now()
-		requestReq, err := http.NewRequest("GET", h.config.AppServer.BackendBaseURL+"/requests/"+req.RequestID, nil)
+		requestReq, err := http.NewRequest("GET", h.config.AppServer.BackendAPIURL+"/requests/"+req.RequestID, nil)
 		if err != nil {
 			h.logger.LogError(err, map[string]interface{}{
 				"path":       r.URL.Path,
@@ -449,7 +449,7 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 		h.logger.WithFields(map[string]interface{}{
 			"username":   requestData.Username,
 			"group_data": selfGroupData,
-			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups",
+			"endpoint":   h.config.AppServer.BackendAPIURL + "/groups",
 			"request_id": req.RequestID,
 		}).Info("Creating self group")
 
@@ -466,7 +466,7 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		selfGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups", bytes.NewBuffer(selfGroupBody))
+		selfGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendAPIURL+"/groups", bytes.NewBuffer(selfGroupBody))
 		if err != nil {
 			h.logger.LogError(err, map[string]interface{}{
 				"path":       r.URL.Path,
@@ -541,12 +541,12 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 		h.logger.WithFields(map[string]interface{}{
 			"user_id":    backendResp.UserID,
 			"group_name": requestData.Username,
-			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups/" + requestData.Username + "/members",
+			"endpoint":   h.config.AppServer.BackendAPIURL + "/groups/" + requestData.Username + "/members",
 		}).Info("Adding user to self group")
 
 		// Add to self group
 		start = time.Now()
-		selfMembersReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups/"+requestData.Username+"/members", bytes.NewBuffer(membersBody))
+		selfMembersReq, err := http.NewRequest("POST", h.config.AppServer.BackendAPIURL+"/groups/"+requestData.Username+"/members", bytes.NewBuffer(membersBody))
 		if err != nil {
 			h.logger.LogError(err, map[string]interface{}{
 				"path":       r.URL.Path,
@@ -624,10 +624,10 @@ func (h *Handler) ValidateEmail(w http.ResponseWriter, r *http.Request) {
 		h.logger.WithFields(map[string]interface{}{
 			"user_id":    backendResp.UserID,
 			"group_name": "users",
-			"endpoint":   h.config.AppServer.BackendBaseURL + "/groups/users/members",
+			"endpoint":   h.config.AppServer.BackendAPIURL + "/groups/users/members",
 		}).Info("Adding user to users group")
 
-		usersGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendBaseURL+"/groups/users/members", bytes.NewBuffer(usersGroupBody))
+		usersGroupReq, err := http.NewRequest("POST", h.config.AppServer.BackendAPIURL+"/groups/users/members", bytes.NewBuffer(usersGroupBody))
 		if err != nil {
 			h.logger.LogError(err, map[string]interface{}{
 				"path":       r.URL.Path,
@@ -847,14 +847,14 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 	}{
 		RequestID: requestID,
 		CSR:       req.CSR,
-		Groups:    req.Groups, // Pass the groups received in the request
+		Groups:    req.Groups,                    // Pass the groups received in the request
 		Token:     r.Header.Get("Authorization"), // Send the JWT token
 	}
 
 	// Log the groups being sent to the signer
 	h.logger.WithFields(map[string]interface{}{
-		"user_id":        userID,
-		"request_id":     requestID,
+		"user_id":          userID,
+		"request_id":       requestID,
 		"requested_groups": req.Groups,
 	}).Info("Sending CSR and requested groups to signer service")
 
@@ -955,11 +955,11 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 
 	// Send request to backend
 	start := time.Now()
-	backendURL := h.config.AppServer.BackendBaseURL + "/request/check-username/" + username
+	backendURL := h.config.AppServer.BackendAPIURL + "/request/check-username/" + username
 	h.logger.WithFields(map[string]interface{}{
 		"backend_url": backendURL,
 		"username":    username,
-		"config_url":  h.config.AppServer.BackendBaseURL,
+		"config_url":  h.config.AppServer.BackendAPIURL,
 	}).Info("DEBUG: Full backend URL")
 
 	backendReq, err := http.NewRequest("GET", backendURL, nil)
@@ -1047,7 +1047,7 @@ func (h *Handler) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 
 	// First, get the user info from backend
 	start := time.Now()
-	userURL := h.config.AppServer.BackendBaseURL + "/users/username/" + username
+	userURL := h.config.AppServer.BackendAPIURL + "/users/username/" + username
 	h.logger.WithFields(map[string]interface{}{
 		"user_url": userURL,
 		"username": username,
@@ -1087,7 +1087,7 @@ func (h *Handler) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 
 	// Now get the groups for this user
 	start = time.Now()
-	groupsURL := h.config.AppServer.BackendBaseURL + "/users/" + userData.ID + "/groups"
+	groupsURL := h.config.AppServer.BackendAPIURL + "/users/" + userData.ID + "/groups"
 	h.logger.WithFields(map[string]interface{}{
 		"groups_url": groupsURL,
 		"user_id":    userData.ID,
