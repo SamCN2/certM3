@@ -28,6 +28,11 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
+	// Validate configuration
+	if err := config.Validate("signer"); err != nil {
+		log.Fatalf("Failed to validate config: %v", err)
+	}
+
 	// Initialize logger
 	logger, err := logging.New(config.LogLevel, config.Signer.LogFile, config.Verbose)
 	if err != nil {
@@ -102,14 +107,14 @@ func main() {
 	h := signer.NewHandler(logger, m, s)
 
 	// Create socket directory
-	socketDir := filepath.Dir(config.Signer.SocketPath)
+	socketDir := filepath.Dir(config.Middleware.SocketPath)
 	if err := os.MkdirAll(socketDir, 0755); err != nil {
 		logger.Error("Failed to create socket directory: %v", err)
 		os.Exit(1)
 	}
 
 	// Remove existing socket if it exists
-	if err := os.Remove(config.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(config.Middleware.SocketPath); err != nil && !os.IsNotExist(err) {
 		logger.Error("Failed to remove existing socket: %v", err)
 		os.Exit(1)
 	}
@@ -131,20 +136,20 @@ func main() {
 	//     "caCertificate": "string" // PEM-encoded CA certificate
 	//   }
 	// }
-	listener, err := net.Listen("unix", config.Signer.SocketPath)
+	listener, err := net.Listen("unix", config.Middleware.SocketPath)
 	if err != nil {
 		logger.Error("Failed to create Unix domain socket: %v", err)
 		os.Exit(1)
 	}
 
 	// Set socket permissions
-	if err := os.Chmod(config.Signer.SocketPath, 0666); err != nil {
+	if err := os.Chmod(config.Middleware.SocketPath, 0666); err != nil {
 		logger.Error("Failed to set socket permissions: %v", err)
 		os.Exit(1)
 	}
 
 	// Start server
-	logger.Info("Starting server on %s", config.Signer.SocketPath)
+	logger.Info("Starting server on %s", config.Middleware.SocketPath)
 	go func() {
 		for {
 			conn, err := listener.Accept()
@@ -168,7 +173,7 @@ func main() {
 	}
 
 	// Remove socket file
-	if err := os.Remove(config.Signer.SocketPath); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(config.Middleware.SocketPath); err != nil && !os.IsNotExist(err) {
 		logger.Error("Failed to remove socket file: %v", err)
 	}
 

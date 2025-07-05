@@ -862,7 +862,7 @@ func (h *Handler) SubmitCSR(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	// Create Unix domain socket connection to signer
-	conn, err := net.Dial("unix", h.config.Signer.SocketPath)
+	conn, err := net.Dial("unix", h.config.Middleware.SocketPath)
 	if err != nil {
 		h.logger.LogError(err, map[string]interface{}{
 			"path":       r.URL.Path,

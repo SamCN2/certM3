@@ -132,3 +132,7 @@ yarn.lock
 # Environment files
 *.env
 !src/mw/test/test.env.example
+
+# Configuration files (environment-specific)
+config.yaml
+src/mw/config.yaml

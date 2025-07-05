@@ -66,7 +66,7 @@ func main() {
 	fmt.Printf("JWT secret in config: '%s'\n", config.AppServer.JWTSecret)
 
 	// Validate configuration
-	if err := config.Validate(); err != nil {
+	if err := config.Validate("app"); err != nil {
 		panic(err)
 	}
 

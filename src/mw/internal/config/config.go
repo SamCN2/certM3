@@ -17,10 +17,14 @@ type Config struct {
 	LogFile  string `yaml:"log_file"`
 	Verbose  bool   `yaml:"verbose"`
 
+	// Middleware configuration (shared between app and signer)
+	Middleware struct {
+		SocketPath string `yaml:"socket_path"`
+	} `yaml:"middleware"`
+
 	// App server configuration
 	AppServer struct {
 		ListenAddr      string `yaml:"listen_addr"`
-		SocketPath      string `yaml:"socket_path"`
 		BackendAPIURL   string `yaml:"backend_baseurl"`
 		FrontendBaseURL string `yaml:"frontend_baseurl"`
 		JWTSecret       string `yaml:"jwt_secret"`
@@ -37,7 +41,6 @@ type Config struct {
 
 	// Signer configuration
 	Signer struct {
-		SocketPath           string   `yaml:"socket_path"`
 		CACertPath           string   `yaml:"ca_cert_path"`
 		CAKeyPath            string   `yaml:"ca_key_path"`
 		SubjectOU            string   `yaml:"subject_ou"`
@@ -114,19 +117,22 @@ func Load(configPath string) (*Config, error) {
 }
 
 // Validate validates the configuration
-func (c *Config) Validate() error {
+func (c *Config) Validate(component string) error {
 	// Common validation
 	if c.LogLevel != "debug" && c.LogLevel != "info" && c.LogLevel != "warn" && c.LogLevel != "error" {
 		return fmt.Errorf("invalid log level: %s", c.LogLevel)
+	}
+
+	// Middleware validation (shared between app and signer)
+	if c.Middleware.SocketPath == "" {
+		return fmt.Errorf("MIDDLEWARE_SOCKET_PATH is required")
 	}
 
 	// App server validation
 	if c.AppServer.ListenAddr == "" {
 		return fmt.Errorf("APP_LISTEN_ADDR is required")
 	}
-	if c.AppServer.SocketPath == "" {
-		return fmt.Errorf("APP_SOCKET_PATH is required")
-	}
+	// App server doesn't need its own socket path - it communicates with signer via middleware socket
 	if c.AppServer.JWTSecret == "" {
 		return fmt.Errorf("JWT_SECRET is required")
 	}
@@ -150,57 +156,56 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Signer validation
-	if c.Signer.SocketPath == "" {
-		return fmt.Errorf("SIGNER_SOCKET_PATH is required")
-	}
-	if c.Signer.CACertPath == "" {
-		return fmt.Errorf("CA_CERT_PATH is required")
-	}
-	if c.Signer.CAKeyPath == "" {
-		return fmt.Errorf("CA_KEY_PATH is required")
-	}
-	if _, err := os.Stat(c.Signer.CACertPath); err != nil {
-		return fmt.Errorf("CA certificate not found: %v", err)
-	}
-	if _, err := os.Stat(c.Signer.CAKeyPath); err != nil {
-		return fmt.Errorf("CA key not found: %v", err)
-	}
-	if c.Signer.SubjectOU == "" {
-		return fmt.Errorf("SIGNER_SUBJECT_OU is required")
-	}
-	if c.Signer.SubjectO == "" {
-		return fmt.Errorf("SIGNER_SUBJECT_O is required")
-	}
-	if c.Signer.SubjectL == "" {
-		return fmt.Errorf("SIGNER_SUBJECT_L is required")
-	}
-	if c.Signer.SubjectST == "" {
-		return fmt.Errorf("SIGNER_SUBJECT_ST is required")
-	}
-	if c.Signer.SubjectC == "" {
-		return fmt.Errorf("SIGNER_SUBJECT_C is required")
-	}
-	if c.Signer.CertValidityDays == 0 {
-		return fmt.Errorf("SIGNER_CERT_VALIDITY_DAYS is required")
-	}
-	if c.Signer.CRLDistributionURL == "" {
-		return fmt.Errorf("SIGNER_CRL_URL is required")
-	}
-	if c.Signer.AIAIssuerURL == "" {
-		return fmt.Errorf("SIGNER_AIA_URL is required")
-	}
-	if c.Signer.RoleExtensionOID == "" {
-		return fmt.Errorf("SIGNER_ROLE_OID is required")
-	}
-	if c.Signer.UsernameExtensionOID == "" {
-		return fmt.Errorf("SIGNER_USERNAME_OID is required")
-	}
-	if len(c.Signer.KeyUsage) == 0 {
-		return fmt.Errorf("SIGNER_KEY_USAGE is required")
-	}
-	if len(c.Signer.ExtendedKeyUsage) == 0 {
-		return fmt.Errorf("SIGNER_EXTENDED_KEY_USAGE is required")
+	// Signer validation (only when component is "signer")
+	if component == "signer" {
+		if c.Signer.CACertPath == "" {
+			return fmt.Errorf("SIGNER_CA_CERT_PATH is required")
+		}
+		if c.Signer.CAKeyPath == "" {
+			return fmt.Errorf("SIGNER_CA_KEY_PATH is required")
+		}
+		if _, err := os.Stat(c.Signer.CACertPath); err != nil {
+			return fmt.Errorf("signer CA certificate not found: %v", err)
+		}
+		if _, err := os.Stat(c.Signer.CAKeyPath); err != nil {
+			return fmt.Errorf("signer CA key not found: %v", err)
+		}
+		if c.Signer.SubjectOU == "" {
+			return fmt.Errorf("SIGNER_SUBJECT_OU is required")
+		}
+		if c.Signer.SubjectO == "" {
+			return fmt.Errorf("SIGNER_SUBJECT_O is required")
+		}
+		if c.Signer.SubjectL == "" {
+			return fmt.Errorf("SIGNER_SUBJECT_L is required")
+		}
+		if c.Signer.SubjectST == "" {
+			return fmt.Errorf("SIGNER_SUBJECT_ST is required")
+		}
+		if c.Signer.SubjectC == "" {
+			return fmt.Errorf("SIGNER_SUBJECT_C is required")
+		}
+		if c.Signer.CertValidityDays == 0 {
+			return fmt.Errorf("SIGNER_CERT_VALIDITY_DAYS is required")
+		}
+		if c.Signer.CRLDistributionURL == "" {
+			return fmt.Errorf("SIGNER_CRL_URL is required")
+		}
+		if c.Signer.AIAIssuerURL == "" {
+			return fmt.Errorf("SIGNER_AIA_URL is required")
+		}
+		if c.Signer.RoleExtensionOID == "" {
+			return fmt.Errorf("SIGNER_ROLE_OID is required")
+		}
+		if c.Signer.UsernameExtensionOID == "" {
+			return fmt.Errorf("SIGNER_USERNAME_OID is required")
+		}
+		if len(c.Signer.KeyUsage) == 0 {
+			return fmt.Errorf("SIGNER_KEY_USAGE is required")
+		}
+		if len(c.Signer.ExtendedKeyUsage) == 0 {
+			return fmt.Errorf("SIGNER_EXTENDED_KEY_USAGE is required")
+		}
 	}
 
 	if c.AppServer.RateLimitPerIP < 0 {

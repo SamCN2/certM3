@@ -258,7 +258,7 @@ func RunTestAPI(h *Handler, log *logging.Logger) error {
 	}
 
 	// Create Unix domain socket connection to signer
-	conn, err := net.Dial("unix", h.config.Signer.SocketPath)
+	conn, err := net.Dial("unix", h.config.Middleware.SocketPath)
 	if err != nil {
 		return fmt.Errorf("failed to connect to signer: %v", err)
 	}
