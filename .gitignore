@@ -115,6 +115,9 @@ src/app.deprecated/semantic/dist/
 *.min.css
 *.map
 
+# Generated static files (built by build-spa.sh)
+static/
+
 # Temporary and backup files
 docs.aux/
 *.bak

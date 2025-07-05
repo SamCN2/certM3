@@ -1,0 +1,26 @@
+# CA private keys and certificates
+certs/
+*.pem
+*.key
+*.crt
+*.csr
+*.srl
+
+# OpenSSL database files
+index.txt*
+serial*
+*.old
+*.attr
+
+# CRL
+crl/
+*.crl
+
+# New certificates directory
+newcerts/
+
+# Random number file
+.rand
+
+# Configuration backup files
+*.cnf~ 
