@@ -337,7 +337,7 @@ func (s *Signer) SignCSR(csrPEM []byte, requestedGroups []string) ([]byte, error
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Duration(s.config.Signer.CertValidityDays) * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment, // Consider making this configurable via s.config
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, // Consider making this configurable via s.config
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},               // Consider making this configurable via s.config
 		BasicConstraintsValid: true,
 		IsCA:                  false,
 
@@ -359,7 +359,8 @@ func (s *Signer) SignCSR(csrPEM []byte, requestedGroups []string) ([]byte, error
 		if errGroupExt != nil {
 			return nil, fmt.Errorf("failed to create group extension: %v", errGroupExt)
 		}
-		template.Extensions = append(template.Extensions, groupExt)
+		template.ExtraExtensions = append(template.ExtraExtensions, groupExt)
+		s.logger.Info("Appended group extension to template.ExtraExtensions for user %s. OID: %v", username, groupExt.Id)
 	} else {
 		s.logger.Warn("No authorized groups for user %s after intersection and addition of defaults; group extension will be omitted.", username)
 	}

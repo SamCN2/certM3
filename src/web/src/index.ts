@@ -339,19 +339,9 @@ class IndexApp {
                         csr.publicKey = keys.publicKey;
                         csr.setSubject([{ name: 'commonName', value: this.username }]);
                         
-                        // Add custom username extension
-                        const usernameOid = '1.3.6.1.4.1.10049.1.2';
-                        const usernameExt = {
-                            id: usernameOid,
-                            critical: false,
-                            value: forge.util.encodeUtf8(this.username)
-                        };
-                        
-                        // Add extension
-                        csr.setAttributes([{
-                            name: 'extensionRequest',
-                            extensions: [usernameExt]
-                        }]);
+                        // Note: Groups are handled by the signer, not in the CSR
+                        // The signer will add the group extension (OID 1.3.6.1.4.1.10049.2)
+                        // based on the groups parameter passed separately in the API call
                         
                         // Sign CSR
                         csr.sign(keys.privateKey);
