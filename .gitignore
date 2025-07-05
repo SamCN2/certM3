@@ -108,6 +108,14 @@ src/mw/bin/
 *.test.ts
 !src/mw/test/
 
+# Test certificates and temporary test files
+*.pem
+*.p12
+*.crt
+*.key
+!src/mw/config.yaml
+!src/mw/config.yaml.example
+
 # Build artifacts and compiled files
 src/app.deprecated/dist/
 src/app.deprecated/semantic/dist/
@@ -134,5 +142,4 @@ yarn.lock
 !src/mw/test/test.env.example
 
 # Configuration files (environment-specific)
-config.yaml
-src/mw/config.yaml
+# Note: src/mw/config.yaml and src/mw/config.yaml.example should be committed

@@ -41,23 +41,21 @@ type Config struct {
 
 	// Signer configuration
 	Signer struct {
-		CACertPath           string   `yaml:"ca_cert_path"`
-		CAKeyPath            string   `yaml:"ca_key_path"`
-		SubjectOU            string   `yaml:"subject_ou"`
-		SubjectO             string   `yaml:"subject_o"`
-		SubjectL             string   `yaml:"subject_l"`
-		SubjectST            string   `yaml:"subject_st"`
-		SubjectC             string   `yaml:"subject_c"`
-		CertValidityDays     int      `yaml:"cert_validity_days"`
-		CRLDistributionURL   string   `yaml:"crl_distribution_url"`
-		AIAIssuerURL         string   `yaml:"aia_issuer_url"`
-		RoleExtensionOID     string   `yaml:"role_extension_oid"`
-		UsernameExtensionOID string   `yaml:"username_extension_oid"`
-		GroupExtensionOID    string   `yaml:"group_extension_oid"`
-		KeyUsage             []string `yaml:"key_usage"`
-		ExtendedKeyUsage     []string `yaml:"extended_key_usage"`
-		APIURL               string   `yaml:"api_url"`
-		LogFile              string   `yaml:"log_file"`
+		CACertPath         string   `yaml:"ca_cert_path"`
+		CAKeyPath          string   `yaml:"ca_key_path"`
+		SubjectOU          string   `yaml:"subject_ou"`
+		SubjectO           string   `yaml:"subject_o"`
+		SubjectL           string   `yaml:"subject_l"`
+		SubjectST          string   `yaml:"subject_st"`
+		SubjectC           string   `yaml:"subject_c"`
+		CertValidityDays   int      `yaml:"cert_validity_days"`
+		CRLDistributionURL string   `yaml:"crl_distribution_url"`
+		AIAIssuerURL       string   `yaml:"aia_issuer_url"`
+		GroupExtensionOID  string   `yaml:"group_extension_oid"`
+		KeyUsage           []string `yaml:"key_usage"`
+		ExtendedKeyUsage   []string `yaml:"extended_key_usage"`
+		APIURL             string   `yaml:"api_url"`
+		LogFile            string   `yaml:"log_file"`
 	}
 }
 
@@ -194,11 +192,8 @@ func (c *Config) Validate(component string) error {
 		if c.Signer.AIAIssuerURL == "" {
 			return fmt.Errorf("SIGNER_AIA_URL is required")
 		}
-		if c.Signer.RoleExtensionOID == "" {
-			return fmt.Errorf("SIGNER_ROLE_OID is required")
-		}
-		if c.Signer.UsernameExtensionOID == "" {
-			return fmt.Errorf("SIGNER_USERNAME_OID is required")
+		if c.Signer.GroupExtensionOID == "" {
+			return fmt.Errorf("SIGNER_GROUP_OID is required")
 		}
 		if len(c.Signer.KeyUsage) == 0 {
 			return fmt.Errorf("SIGNER_KEY_USAGE is required")

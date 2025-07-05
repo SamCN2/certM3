@@ -17,6 +17,7 @@
 
 import axios, { AxiosError } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import yaml from 'js-yaml';
 import fs from 'fs';
 import path from 'path';
 import forge from 'node-forge';
@@ -33,6 +34,12 @@ console.log(`Running tests in ${useRaw ? 'local development' : 'production'} mod
 console.log(`API URL: ${API_BASE_URL}`);
 console.log(`App URL: ${APP_BASE_URL}\n`);
 
+// Load group extension OID from config.yaml
+const configPath = path.resolve(__dirname, '../src/mw/config.yaml');
+const configYaml = fs.readFileSync(configPath, 'utf8');
+const config = yaml.load(configYaml);
+const GROUP_EXTENSION_OID = config?.signer?.group_extension_oid || '1.3.6.1.4.1.10049.6.5.1.1.1';
+
 // Test data
 const TEST_REQUEST = {
   username: `testuser${Math.floor(Math.random() * 999999)}`.toLowerCase(),
@@ -43,8 +50,8 @@ const TEST_REQUEST = {
 // OID definitions
 const OID = {
   BASE: '1.3.6.1.4.1.10049', // webrelay arc
-  GROUPS: '1.3.6.1.4.1.10049.1', // Groups extension
-  USERNAME: '1.3.6.1.4.1.10049.2', // Username extension
+  GROUPS: GROUP_EXTENSION_OID, // Groups extension (from config)
+  USERNAME: '1.3.6.1.4.1.10049.2', // Username extension (deprecated)
 };
 
 // Test environment configuration

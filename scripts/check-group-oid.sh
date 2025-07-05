@@ -1,9 +1,12 @@
 #!/bin/bash
 # Usage: ./check-group-oid.sh <certificate.pem>
-# Checks for the presence of the group OID 1.3.6.1.4.1.10049.2 in the certificate
+# Checks for the presence of the group OID from config.yaml in the certificate
 
 CERT_FILE="$1"
-OID="1.3.6.1.4.1.10049.2"
+CONFIG_FILE="src/mw/config.yaml"
+
+# Extract the group extension OID from config.yaml
+OID=$(grep "group_extension_oid:" "$CONFIG_FILE" | awk '{print $2}' | tr -d '"')
 
 if [ -z "$CERT_FILE" ]; then
   echo "Usage: $0 <certificate.pem>"
@@ -14,6 +17,13 @@ if ! [ -f "$CERT_FILE" ]; then
   echo "File not found: $CERT_FILE"
   exit 2
 fi
+
+if [ -z "$OID" ]; then
+  echo "Could not extract group extension OID from $CONFIG_FILE"
+  exit 3
+fi
+
+echo "Checking for group extension OID: $OID in $CERT_FILE"
 
 # Dump ASN.1 structure and search for the OID
 ASN1_OUTPUT=$(openssl x509 -in "$CERT_FILE" -outform DER | openssl asn1parse -inform DER)
