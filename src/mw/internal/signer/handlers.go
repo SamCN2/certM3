@@ -94,7 +94,7 @@ func (h *Handler) SignCSR(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Sign the CSR
-	certPEM, err := h.signer.SignCSR([]byte(req.CSR))
+	certPEM, err := h.signer.SignCSR([]byte(req.CSR), req.Groups)
 	if err != nil {
 		h.logger.Error("Failed to sign CSR: %v", err)
 		http.Error(w, "Failed to sign CSR", http.StatusInternalServerError)

@@ -51,6 +51,7 @@ type Config struct {
 		AIAIssuerURL         string   `yaml:"aia_issuer_url"`
 		RoleExtensionOID     string   `yaml:"role_extension_oid"`
 		UsernameExtensionOID string   `yaml:"username_extension_oid"`
+		GroupExtensionOID    string   `yaml:"group_extension_oid"`
 		KeyUsage             []string `yaml:"key_usage"`
 		ExtendedKeyUsage     []string `yaml:"extended_key_usage"`
 		APIURL               string   `yaml:"api_url"`

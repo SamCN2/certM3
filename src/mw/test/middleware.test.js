@@ -81,6 +81,7 @@ let testUsername = generateUniqueUsername();
 let requestId;
 let jwt;
 let challengeCode;
+let userGroups = [];
 
 describe('CertM3 Middleware Tests', () => {
   // Username Check - Initial availability
@@ -142,6 +143,7 @@ describe('CertM3 Middleware Tests', () => {
     expect(Array.isArray(groups)).toBe(true);
     expect(groups).toContain(testUsername);  // This is the "self" group
     expect(groups).toContain('users');
+    userGroups = groups; // Save for CSR submission
   });
 
   test('/app/submit-csr - Submit and sign CSR', async () => {
@@ -156,8 +158,11 @@ describe('CertM3 Middleware Tests', () => {
     const pemCsr = forge.pki.certificationRequestToPem(csr)
       .replace(/\r\n/g, '\n');  // Convert all line endings to Unix format
     console.log('Generated CSR:', pemCsr);
+    // Select a subset of groups for the test (e.g., all groups)
+    const selectedGroups = userGroups;
     const submitResponse = await api.post('/app/submit-csr', {
-      csr: pemCsr
+      csr: pemCsr,
+      groups: selectedGroups
     }, {
       headers: {
         Authorization: `Bearer ${jwt}`
