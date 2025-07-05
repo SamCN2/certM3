@@ -48,19 +48,12 @@ class CryptoService {
             const publicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
             csr.publicKey = publicKey;
             
-            // Set subject
+            // Set subject with username in Common Name (CN)
             csr.setSubject([{ name: 'commonName', value: username }]);
             
-            // Add username extension
-            const usernameOid = '1.3.6.1.4.1.10049.1.2';
-            csr.setAttributes([{
-                name: 'extensionRequest',
-                extensions: [{
-                    id: usernameOid,
-                    critical: false,
-                    value: forge.util.encodeUtf8(username)
-                }]
-            }]);
+            // Note: Groups are handled by the signer, not in the CSR
+            // The signer will add the group extension (OID 1.3.6.1.4.1.10049.2)
+            // based on the groups parameter passed separately in the API call
             
             // Sign CSR with private key
             csr.sign(privateKey);

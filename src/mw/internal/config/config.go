@@ -21,9 +21,8 @@ type Config struct {
 	AppServer struct {
 		ListenAddr      string `yaml:"listen_addr"`
 		SocketPath      string `yaml:"socket_path"`
-		BackendAPIURL   string `yaml:"backend_api_url"`
+		BackendAPIURL   string `yaml:"backend_baseurl"`
 		FrontendBaseURL string `yaml:"frontend_baseurl"`
-		BackendBaseURL  string `yaml:"backend_baseurl"`
 		JWTSecret       string `yaml:"jwt_secret"`
 		MTLSCertPath    string
 		MTLSKeyPath     string
@@ -51,6 +50,7 @@ type Config struct {
 		AIAIssuerURL         string   `yaml:"aia_issuer_url"`
 		RoleExtensionOID     string   `yaml:"role_extension_oid"`
 		UsernameExtensionOID string   `yaml:"username_extension_oid"`
+		GroupExtensionOID    string   `yaml:"group_extension_oid"`
 		KeyUsage             []string `yaml:"key_usage"`
 		ExtendedKeyUsage     []string `yaml:"extended_key_usage"`
 		APIURL               string   `yaml:"api_url"`
@@ -87,7 +87,7 @@ func Load(configPath string) (*Config, error) {
 		config.AppServer.ListenAddr = ":8080"
 	}
 	if config.AppServer.BackendAPIURL == "" {
-		config.AppServer.BackendAPIURL = "http://localhost:8081"
+		config.AppServer.BackendAPIURL = "https://urp.ogt11.com/api"
 	}
 	if config.AppServer.RateLimitPerIP == 0 {
 		config.AppServer.RateLimitPerIP = 100
