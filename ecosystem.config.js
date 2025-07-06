@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'api',
     script: 'src/api/dist/index.js',
-    args: '--config ./src/api/config/database.json',
+    args: '--config ./config/config.yaml',
     cwd: '.',
     watch: false,
     error_file: '/var/spool/certM3/logs/api-error.log',
@@ -19,6 +19,7 @@ module.exports = {
   {
     name: 'certm3-app',
     script: 'bin/certm3-app',
+    args: '--config ../config/config.yaml',
     cwd: 'src/mw',
     watch: false,
     error_file: '/var/spool/certM3/logs/certm3-app-error.log',
@@ -35,7 +36,7 @@ module.exports = {
   {
     name: 'certm3-signer',
     script: 'bin/certm3-signer',
-    args: '-config ./config.yaml',
+    args: '--config ../config/config.yaml',
     cwd: 'src/mw',
     watch: false,
     error_file: '/var/spool/certM3/logs/certm3-signer-error.log',

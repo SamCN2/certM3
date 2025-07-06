@@ -1,6 +1,6 @@
 CertM3 Package
-Version: v1.5.3
-Built: Sun Jul  6 12:18:36 AM EDT 2025
+Version: v1.6.0
+Built: Sun Jul  6 12:37:00 AM EDT 2025
 Platform: Linux x64
 Components:
 - certm3-app: pkg/bin/certm3-app: ELF 64-bit LSB executable

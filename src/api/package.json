@@ -7,6 +7,7 @@
     "loopback"
   ],
   "main": "dist/index.js",
+  "bin": "dist/index.js",
   "types": "dist/index.d.ts",
   "engines": {
     "node": "18 || 20 || 22"
@@ -79,5 +80,34 @@
     "supertest": "^7.1.1",
     "ts-node": "^10.9.1",
     "typescript": "~4.9.5"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/strong-globalize/intl/**/*:node_modules/strong-error-handler/intl/",
+      "node_modules/strong-globalize/intl/**/*:node_modules/strong-globalize/intl/",
+      "node_modules/strong-globalize/intl/**/*",
+      "node_modules/strong-globalize/**/*",
+      "node_modules/loopback-datasource-juggler/**/*",
+      "node_modules/loopback-connector-postgresql/**/*",
+      "node_modules/pg/**/*",
+      "node_modules/pg-hstore/**/*",
+      "node_modules/typeorm/**/*",
+      "node_modules/uuid/**/*",
+      "node_modules/async-function/**/*",
+      "node_modules/async/**/*",
+      "node_modules/bluebird/**/*",
+      "node_modules/debug/**/*",
+      "node_modules/inflection/**/*",
+      "node_modules/loopback-connector/**/*",
+      "node_modules/loopback-datasource-juggler/**/*",
+      "dist/**/*"
+    ],
+    "scripts": [
+      "node_modules/strong-globalize/**/*.js",
+      "node_modules/loopback-datasource-juggler/**/*.js",
+      "node_modules/loopback-connector-postgresql/**/*.js",
+      "node_modules/async-function/**/*.js"
+    ],
+    "targets": ["node16-linux-x64"]
   }
 }
