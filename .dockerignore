@@ -1,0 +1,13 @@
+# Everything except pkg directory and docker files
+*
+!pkg/
+!docker/
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+
+# Exclude unnecessary files from pkg if they exist
+pkg/node_modules/
+pkg/*.log
+pkg/tmp/
+pkg/temp/ 

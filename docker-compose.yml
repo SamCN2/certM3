@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  certm3:
+    build: .
+    container_name: certm3
+    ports:
+      - "80:80"  # Expose on 80 for direct testing
+    volumes:
+      # Persist CA certificates and keys
+      - certm3_ca:/var/spool/certM3
+      # Persist database data
+      - certm3_db:/var/lib/postgresql/14/main
+      # Persist logs
+      - certm3_logs:/var/log/certM3
+      # Optional: Mount custom config
+      - ./config.local.yaml:/opt/certm3/etc/config.local.yaml:ro
+    environment:
+      - CERTM3_VERSION=1.6.1
+      - POSTGRES_PASSWORD=certm3_password
+    command: ["urp.ogt11.com"]  # Pass FQDN as command line argument
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  certm3_ca:
+    driver: local
+  certm3_db:
+    driver: local
+  certm3_logs:
+    driver: local 
