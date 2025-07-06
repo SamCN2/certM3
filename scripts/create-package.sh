@@ -239,6 +239,13 @@ else
     echo "Warning: CA-mgmt directory not found. Users will need to create CA certificates manually."
 fi
 
+# Copy database setup files
+echo "Copying database setup files..."
+cp scripts/setup-database.sh pkg/
+cp scripts/create_certm3_schema.sql pkg/
+chmod +x pkg/setup-database.sh
+echo "Database setup files copied to pkg/"
+
 # Create start script
 echo "Creating start script..."
 cat > pkg/start.sh << 'EOF'
@@ -274,9 +281,10 @@ echo "Services started. Use 'pm2 list' to check status."
 echo "Logs are available in var/spool/certM3/logs/"
 echo ""
 echo "Next steps:"
-echo "1. Configure nginx using etc/nginx.certm3-skeleton.conf"
-echo "2. Customize config in etc/config.local.yaml (if not already done)"
-echo "3. Access the web interface at your configured domain"
+echo "1. Set up database: sudo -u postgres ./setup-database.sh"
+echo "2. Configure nginx using etc/nginx.certm3-skeleton.conf"
+echo "3. Customize config in etc/config.local.yaml (if not already done)"
+echo "4. Access the web interface at your configured domain"
 EOF
 
 chmod +x pkg/start.sh

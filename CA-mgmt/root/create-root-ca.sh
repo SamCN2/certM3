@@ -3,22 +3,24 @@
 # Usage: ./create-root-ca.sh <subject> <key-bits> <days>
 # Example: ./create-root-ca.sh "/C=US/ST=State/L=City/O=Organization/CN=CertM3-Root-CA" 4096 3650
 
+# Create a root CA for CertM3
 set -e
 
-SUBJECT="$1"      # e.g. "/C=US/ST=State/L=City/O=Organization/CN=CertM3-Root-CA"
-KEY_BITS="$2"     # e.g. 4096
-DAYS="$3"         # e.g. 3650 (10 years)
+# Get command line arguments
+SUBJECT="${1:-/C=US/ST=Maryland/L=Bethesda/O=ogt11.com/OU=CertM3/CN=CertM3-Root-CA}"
+KEY_BITS="${2:-4096}"
+DAYS="${3:-3650}"
 
-if [ -z "$SUBJECT" ] || [ -z "$KEY_BITS" ] || [ -z "$DAYS" ]; then
-  echo "Usage: $0 <subject> <key-bits> <days>"
-  exit 1
-fi
+# Directories - use main CA directory
+ROOT_DIR="../../CA"
+ROOT_PRIVATE_DIR="$ROOT_DIR/private"
+ROOT_CERTS_DIR="$ROOT_DIR/certs"
 
-ROOT_DIR="../certs/root"
-mkdir -p "$ROOT_DIR"
+mkdir -p "$ROOT_PRIVATE_DIR"
+mkdir -p "$ROOT_CERTS_DIR"
 
-KEY_FILE="$ROOT_DIR/ca.key"
-CERT_FILE="$ROOT_DIR/ca.crt"
+KEY_FILE="$ROOT_PRIVATE_DIR/ca.key"
+CERT_FILE="$ROOT_CERTS_DIR/ca.crt"
 
 # Generate root CA private key
 openssl genrsa -out "$KEY_FILE" "$KEY_BITS"

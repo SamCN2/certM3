@@ -1,11 +1,13 @@
 #!/bin/bash
 # check-expiration.sh: Warn if any CA certs expire within 30 days
 
-CA_DIRS=(
-    "../certs/intermediate/user-ca"
-    "../certs/intermediate/database-ca"
-    "../certs/intermediate/api-ca"
-)
+# Check certificate expiration dates
+set -e
+
+# Directories - use main CA directory
+USER_CA_DIR="../../CA/intermediate/user-ca"
+DATABASE_CA_DIR="../../CA/intermediate/database-ca"
+API_CA_DIR="../../CA/intermediate/api-ca"
 
 WARNING_DAYS=30
 
