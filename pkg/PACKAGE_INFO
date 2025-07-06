@@ -1,0 +1,8 @@
+CertM3 Package
+Version: v1.5.3
+Built: Sun Jul  6 12:18:36 AM EDT 2025
+Platform: Linux x64
+Components:
+- certm3-app: pkg/bin/certm3-app: ELF 64-bit LSB executable
+- certm3-signer: pkg/bin/certm3-signer: ELF 64-bit LSB executable
+- certm3-api: Node.js application (api/start.sh)
