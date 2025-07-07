@@ -5,6 +5,23 @@ log_file: pkg/var/log/certM3/app.log
 # Enable verbose logging to stdout
 verbose: false
 
+# Database configuration
+database:
+  host: "/var/run/postgresql"
+  user: "certm3_user"
+  database: "certm3"
+  password: ""
+  schema: "public"
+  ssl: false
+  transactionSupport: true
+  isolationLevel: "READ COMMITTED"
+
+# API configuration
+api:
+  port: 3000
+  host: "127.0.0.1"
+  prefix: "/api"
+
 # Middleware configuration (shared between app and signer)
 middleware:
   # Shared socket path for app-signer communication
@@ -22,20 +39,6 @@ app_server:
   metrics_path: "/metrics"
   metrics_timeout: 5s
   test_email_dir: "pkg/var/spool/certM3/test-emails/"
-
-# API configuration
-api:
-  listen_addr: ":3000"
-  database:
-    name: "postgres"
-    connector: "postgresql"
-    host: "/var/run/postgresql"
-    user: "samcn2"
-    database: "certm3"
-    schema: "public"
-    ssl: false
-    transactionSupport: true
-    isolationLevel: "READ COMMITTED"
 
 # Signer configuration
 signer:

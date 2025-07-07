@@ -3,7 +3,6 @@
  */
 
 import {ApplicationConfig, Certm3ApiApplication} from './application';
-import {config} from './config';
 import {ConfigLoader} from './config-loader';
 
 export * from './application';
@@ -27,23 +26,18 @@ export async function main(options: ApplicationConfig = {}) {
     ConfigLoader.getInstance().setConfigPath(configPath);
   }
 
-  const app = new Certm3ApiApplication(options);
-  await app.boot();
-  await app.start();
+  // Load config once
+  const configLoader = ConfigLoader.getInstance();
+  const apiConfig = configLoader.getApiConfig();
 
-  const url = app.restServer.url;
-  console.log(`Server is running at ${url}`);
-  console.log(`Try ${url}/ping`);
-
-  return app;
-}
-
-if (require.main === module) {
-  // Run the application
-  const appConfig = {
+  // Create application config with loaded values
+  const appConfig: ApplicationConfig = {
+    ...options,
     rest: {
-      port: config.api.port,
-      host: config.api.host,
+      ...options.rest,
+      port: apiConfig.port,
+      host: apiConfig.host,
+      basePath: apiConfig.prefix,
       // The `gracePeriodForClose` provides a graceful close for http/https
       // servers with keep-alive clients. The default value is `Infinity`
       // (don't force-close). If you want to immediately destroy all sockets
@@ -56,7 +50,21 @@ if (require.main === module) {
       },
     },
   };
-  main(appConfig).catch(err => {
+
+  const app = new Certm3ApiApplication(appConfig);
+  await app.boot();
+  await app.start();
+
+  const url = app.restServer.url;
+  console.log(`Server is running at ${url}`);
+  console.log(`Try ${url}/ping`);
+
+  return app;
+}
+
+if (require.main === module) {
+  // Run the application
+  main().catch(err => {
     console.error('Cannot start the application.', err);
     process.exit(1);
   });

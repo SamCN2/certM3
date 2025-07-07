@@ -14,7 +14,6 @@ import {ServiceMixin} from '@loopback/service-proxy';
 import path from 'path';
 import {MySequence} from './sequence';
 import {UserRepository, CertificateRepository, RequestRepository, GroupRepository, UserGroupRepository} from './repositories';
-import {config} from './config';
 
 export {ApplicationConfig};
 
@@ -22,16 +21,7 @@ export class Certm3ApiApplication extends BootMixin(
   ServiceMixin(RepositoryMixin(RestApplication)),
 ) {
   constructor(options: ApplicationConfig = {}) {
-    // Configure base path for all routes using the config file
-    const restOptions = {
-      ...options,
-      rest: {
-        ...options.rest,
-        basePath: config.api.prefix,
-      },
-    };
-
-    super(restOptions);
+    super(options);
 
     // Set up the custom sequence
     this.sequence(MySequence);

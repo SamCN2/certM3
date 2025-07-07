@@ -7,19 +7,28 @@ import {Group} from '../models/group.model';
 import {Request} from '../models/request.model';
 import {Users} from '../models/user.model';
 import {UserGroup} from '../models/user-group.model';
+import {ConfigLoader} from '../config-loader';
 
-export const AppDataSource = new DataSource({
-  type: 'postgres',
-  host: '/var/run/postgresql',
-  port: 5432,
-  username: 'samcn2',
-  database: 'certm3',
-  synchronize: false,
-  entities: [Certificate, Group, Request, Users, UserGroup],
-  migrations: [
-    CreateTables20240320000000,
-    AddAuditColumns20240320000001,
-    AddDisplayName20240320000002,
-  ],
-  subscribers: [],
-}); 
+// Try to get config from config loader, fail if not found
+function getConfig() {
+  const configLoader = ConfigLoader.getInstance();
+  const dbConfig = configLoader.getDatabaseConfig();
+  
+  return {
+    type: 'postgres' as const,
+    host: dbConfig.host,
+    username: dbConfig.user,
+    password: dbConfig.password,
+    database: dbConfig.database,
+    synchronize: false,
+    entities: [Certificate, Group, Request, Users, UserGroup],
+    migrations: [
+      CreateTables20240320000000,
+      AddAuditColumns20240320000001,
+      AddDisplayName20240320000002,
+    ],
+    subscribers: [],
+  };
+}
+
+export const AppDataSource = new DataSource(getConfig()); 
