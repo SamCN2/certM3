@@ -17,7 +17,7 @@ cp bin/certm3-app ../../pkg/bin/
 cp bin/certm3-signer ../../pkg/bin/
 cd ../..
 
-# Copy API files (using start.sh approach instead of standalone executable)
+# Copy API files (using the unified config system)
 echo "Copying API files..."
 cp -r src/api/* pkg/api/
 cd pkg/api
@@ -29,28 +29,14 @@ else
     exit 1
 fi
 
-# Create API start script
-echo "Creating API start script..."
-cat > start.sh << 'EOF'
-#!/bin/bash
-
-# Start script for CertM3 API
-set -e
-
-echo "Starting CertM3 API..."
-
-# Build the API if needed
-if [ ! -d "dist" ] || [ ! -f "dist/index.js" ]; then
-    echo "Building API..."
-    npm run build
+# Build the API
+echo "Building API..."
+if npm run build; then
+    echo "API built successfully"
+else
+    echo "API build failed"
+    exit 1
 fi
-
-# Start the API
-echo "Starting API server..."
-exec node .
-EOF
-
-chmod +x start.sh
 cd ../..
 
 # Copy static files
@@ -60,8 +46,16 @@ cp -r static/* pkg/static/
 # Copy configuration files
 echo "Copying configuration files..."
 cp config/config.default.yaml pkg/etc/
-cp pkg/etc/config.local.yaml pkg/etc/ 2>/dev/null || echo "Note: config.local.yaml not found, will need to be created manually"
 cp README.md pkg/
+
+# Copy CA management scripts
+echo "Copying CA management scripts..."
+cp -r CA-mgmt pkg/
+
+# Copy database setup scripts
+echo "Copying database setup scripts..."
+cp scripts/create_certm3_schema.sql pkg/
+cp scripts/setup-database.sh pkg/
 
 # Create simplified nginx config for package
 echo "Creating nginx skeleton config..."
@@ -168,17 +162,20 @@ EOF
 # Create PM2 config for package (matching our working configuration)
 echo "Creating PM2 config..."
 cat > pkg/etc/certm3.pm2.config.js << 'EOF'
+const path = require('path');
+
 module.exports = {
   apps: [
-    // API packaged as directory with Node.js
+    // API - use the actual Node.js entry point
     {
       name: 'certm3-api',
-      script: 'api/start.sh',
-      cwd: '.',
+      script: 'api/dist/index.js',
+      args: '--config ../config.yaml',
+      cwd: 'api',
       watch: false,
-      error_file: 'var/spool/certM3/logs/api-error.log',
-      out_file: 'var/spool/certM3/logs/api-out.log',
-      log_file: 'var/spool/certM3/logs/api-combined.log',
+      error_file: '../var/spool/certM3/logs/api-error.log',
+      out_file: '../var/spool/certM3/logs/api-out.log',
+      log_file: '../var/spool/certM3/logs/api-combined.log',
       time: true,
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
@@ -188,11 +185,11 @@ module.exports = {
       restart_delay: 5000,
       env: { PORT: 3000 }
     },
-    // Middleware app
+    // Middleware app - use full path from pkg root
     {
       name: 'certm3-app',
       script: 'bin/certm3-app',
-      args: '--config etc/config.local.yaml',
+      args: '--config config.yaml',
       cwd: '.',
       watch: false,
       error_file: 'var/spool/certM3/logs/certm3-app-error.log',
@@ -207,11 +204,11 @@ module.exports = {
       restart_delay: 5000,
       env: { PORT: 8080 }
     },
-    // Signer
+    // Signer - use full path from pkg root
     {
       name: 'certm3-signer',
       script: 'bin/certm3-signer',
-      args: '--config etc/config.local.yaml',
+      args: '--config config.yaml',
       cwd: '.',
       watch: false,
       error_file: 'var/spool/certM3/logs/certm3-signer-error.log',
@@ -229,25 +226,8 @@ module.exports = {
 };
 EOF
 
-# Copy CA management scripts (NOT private keys or certificates!)
-echo "Copying CA management scripts..."
-if [ -d "CA-mgmt" ]; then
-    cp -r CA-mgmt pkg/
-    echo "CA management scripts copied to pkg/CA-mgmt/"
-    echo "Users should generate their own CA certificates using these scripts"
-else
-    echo "Warning: CA-mgmt directory not found. Users will need to create CA certificates manually."
-fi
-
-# Copy database setup files
-echo "Copying database setup files..."
-cp scripts/setup-database.sh pkg/
-cp scripts/create_certm3_schema.sql pkg/
-chmod +x pkg/setup-database.sh
-echo "Database setup files copied to pkg/"
-
-# Create start script
-echo "Creating start script..."
+# Create startup script
+echo "Creating startup script..."
 cat > pkg/start.sh << 'EOF'
 #!/bin/bash
 
@@ -265,11 +245,11 @@ fi
 # Create log directories
 mkdir -p var/spool/certM3/logs
 
-# Check if config.local.yaml exists, if not create from default
-if [ ! -f "etc/config.local.yaml" ]; then
-    echo "Creating config.local.yaml from default..."
-    cp etc/config.default.yaml etc/config.local.yaml
-    echo "IMPORTANT: Please edit etc/config.local.yaml with your actual FQDN and configuration values"
+# Check if config.yaml exists, if not create from default
+if [ ! -f "config.yaml" ]; then
+    echo "Creating config.yaml from default..."
+    cp etc/config.default.yaml config.yaml
+    echo "IMPORTANT: Please edit config.yaml with your actual FQDN and configuration values"
     echo "The default config contains placeholder values that need to be updated."
 fi
 
@@ -283,7 +263,7 @@ echo ""
 echo "Next steps:"
 echo "1. Set up database: sudo -u postgres ./setup-database.sh"
 echo "2. Configure nginx using etc/nginx.certm3-skeleton.conf"
-echo "3. Customize config in etc/config.local.yaml (if not already done)"
+echo "3. Customize config in config.yaml (if not already done)"
 echo "4. Access the web interface at your configured domain"
 EOF
 
@@ -293,34 +273,13 @@ chmod +x pkg/start.sh
 echo "Creating package info..."
 cat > pkg/PACKAGE_INFO << EOF
 CertM3 Package
-Version: $(git describe --tags --always 2>/dev/null || echo "unknown")
+Version: $(date +%Y%m%d)
 Built: $(date)
-Platform: Linux x64
-Components:
-- certm3-app: $(file pkg/bin/certm3-app | cut -d',' -f1)
-- certm3-signer: $(file pkg/bin/certm3-signer | cut -d',' -f1)
-- certm3-api: Node.js application (api/start.sh)
+Source: $(pwd)
 EOF
 
-# Set permissions
-echo "Setting permissions..."
-chmod +x pkg/bin/*
-chmod +x pkg/api/start.sh
-chmod 644 pkg/etc/*
-
-# Create tarball
-echo "Creating distribution tarball..."
-tar -czf certm3-package-$(date +%Y%m%d).tar.gz pkg/
-
-echo ""
-echo "Package created successfully!"
-echo "Distribution file: certm3-package-$(date +%Y%m%d).tar.gz"
-echo ""
-echo "Package contents:"
-ls -la pkg/
-echo ""
+echo "Package created successfully in pkg/"
 echo "To deploy:"
-echo "1. Extract the tarball on target system"
-echo "2. Run ./pkg/start.sh"
-echo "3. Configure nginx using pkg/etc/nginx.certm3-skeleton.conf"
-echo "4. Edit pkg/etc/config.local.yaml with your actual FQDN values" 
+echo "1. Copy pkg/ to your target system"
+echo "2. Run ./start.sh from within the pkg directory"
+echo "3. Edit config.yaml with your actual domain and settings" 

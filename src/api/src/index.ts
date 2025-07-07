@@ -4,10 +4,29 @@
 
 import {ApplicationConfig, Certm3ApiApplication} from './application';
 import {config} from './config';
+import {ConfigLoader} from './config-loader';
 
 export * from './application';
 
+// Parse command line arguments
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const configPath = args.find((arg, index) => 
+    arg === '--config' && args[index + 1]
+  ) ? args[args.indexOf('--config') + 1] : null;
+  
+  return { configPath };
+}
+
 export async function main(options: ApplicationConfig = {}) {
+  // Parse command line arguments
+  const { configPath } = parseArgs();
+  
+  // Set config path if provided
+  if (configPath) {
+    ConfigLoader.getInstance().setConfigPath(configPath);
+  }
+
   const app = new Certm3ApiApplication(options);
   await app.boot();
   await app.start();

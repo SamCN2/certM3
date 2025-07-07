@@ -4,13 +4,14 @@
 
 import {inject, lifeCycleObserver, LifeCycleObserver} from '@loopback/core';
 import {juggler} from '@loopback/repository';
+import {ConfigLoader} from '../config-loader';
 
-const config = {
+// Default config - will be overridden by config loader
+const defaultConfig = {
   name: 'certm3',
   connector: 'postgresql',
   url: '',
   host: '/var/run/postgresql',
-  port: 5432,
   user: 'samcn2',
   password: '',
   database: 'certm3',
@@ -26,12 +27,31 @@ export class UseradminDataSource
   implements LifeCycleObserver
 {
   static dataSourceName = 'certm3';
-  static readonly defaultConfig = config;
+  static readonly defaultConfig = defaultConfig;
 
   constructor(
     @inject('datasources.config.certm3', {optional: true})
-    dsConfig: object = config,
+    dsConfig: object = defaultConfig,
   ) {
-    super(dsConfig);
+    // Try to get config from config loader, fall back to injected config
+    try {
+      const configLoader = ConfigLoader.getInstance();
+      const dbConfig = configLoader.getDatabaseConfig();
+      
+      const config = {
+        name: 'certm3',
+        connector: 'postgresql',
+        url: '',
+        host: dbConfig.host,
+        user: dbConfig.user,
+        password: dbConfig.password,
+        database: dbConfig.database,
+      };
+      
+      super(config);
+    } catch (error) {
+      // Fall back to injected config if config loader fails
+      super(dsConfig);
+    }
   }
 }

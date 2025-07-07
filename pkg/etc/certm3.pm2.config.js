@@ -1,14 +1,17 @@
+const path = require('path');
+
 module.exports = {
   apps: [
-    // API packaged as directory with Node.js
+    // API - use the actual Node.js entry point
     {
       name: 'certm3-api',
-      script: 'api/start.sh',
-      cwd: '.',
+      script: 'api/dist/index.js',
+      args: '--config ../config.yaml',
+      cwd: 'api',
       watch: false,
-      error_file: 'var/spool/certM3/logs/api-error.log',
-      out_file: 'var/spool/certM3/logs/api-out.log',
-      log_file: 'var/spool/certM3/logs/api-combined.log',
+      error_file: '../var/spool/certM3/logs/api-error.log',
+      out_file: '../var/spool/certM3/logs/api-out.log',
+      log_file: '../var/spool/certM3/logs/api-combined.log',
       time: true,
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
@@ -18,11 +21,11 @@ module.exports = {
       restart_delay: 5000,
       env: { PORT: 3000 }
     },
-    // Middleware app
+    // Middleware app - use full path from pkg root
     {
       name: 'certm3-app',
       script: 'bin/certm3-app',
-      args: '--config etc/config.local.yaml',
+      args: '--config config.yaml',
       cwd: '.',
       watch: false,
       error_file: 'var/spool/certM3/logs/certm3-app-error.log',
@@ -37,11 +40,11 @@ module.exports = {
       restart_delay: 5000,
       env: { PORT: 8080 }
     },
-    // Signer
+    // Signer - use full path from pkg root
     {
       name: 'certm3-signer',
       script: 'bin/certm3-signer',
-      args: '--config etc/config.local.yaml',
+      args: '--config config.yaml',
       cwd: '.',
       watch: false,
       error_file: 'var/spool/certM3/logs/certm3-signer-error.log',

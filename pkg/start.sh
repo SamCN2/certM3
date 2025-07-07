@@ -14,11 +14,11 @@ fi
 # Create log directories
 mkdir -p var/spool/certM3/logs
 
-# Check if config.local.yaml exists, if not create from default
-if [ ! -f "etc/config.local.yaml" ]; then
-    echo "Creating config.local.yaml from default..."
-    cp etc/config.default.yaml etc/config.local.yaml
-    echo "IMPORTANT: Please edit etc/config.local.yaml with your actual FQDN and configuration values"
+# Check if config.yaml exists, if not create from default
+if [ ! -f "config.yaml" ]; then
+    echo "Creating config.yaml from default..."
+    cp etc/config.default.yaml config.yaml
+    echo "IMPORTANT: Please edit config.yaml with your actual FQDN and configuration values"
     echo "The default config contains placeholder values that need to be updated."
 fi
 
@@ -32,5 +32,5 @@ echo ""
 echo "Next steps:"
 echo "1. Set up database: sudo -u postgres ./setup-database.sh"
 echo "2. Configure nginx using etc/nginx.certm3-skeleton.conf"
-echo "3. Customize config in etc/config.local.yaml (if not already done)"
+echo "3. Customize config in config.yaml (if not already done)"
 echo "4. Access the web interface at your configured domain"
