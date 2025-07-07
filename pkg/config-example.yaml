@@ -40,8 +40,8 @@ api:
 # Signer configuration
 signer:
   # CA configuration (only used by signer)
-  ca_cert_path: "CA/certs/ca-cert.pem"
-  ca_key_path: "CA/private/ca-key.pem"
+  ca_cert_path: "../CA/certs/ca-cert.pem"
+  ca_key_path: "../CA/private/ca-key.pem"
   group_extension_oid: "1.3.6.1.4.1.10049.6.5.1.1.1"
   # Groups extension OID (enterprises.webrelay.security.pki.certificates.extensions.groupNameExtension)
   # username_extension_oid removed - username is now only in CN
