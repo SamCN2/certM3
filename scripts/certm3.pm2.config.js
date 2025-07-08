@@ -1,15 +1,18 @@
 /**
- * PM2 ecosystem config for CertM3
+ * PM2 ecosystem config for CertM3 (Production)
+ * This is the source of truth for the packaged version
  */
 const path = require('path');
-const configPath = path.resolve(__dirname, 'config/config.yaml');
+
+// Production config path
+const configPath = path.resolve(__dirname, '../etc/config.yaml');
 
 module.exports = {
   apps: [{
     name: 'api',
-    script: 'src/api/dist/index.js',
+    script: '../api/dist/index.js',
     args: `--config ${configPath}`,
-    cwd: '.',
+    cwd: path.resolve(__dirname, '..'),
     watch: false,
     error_file: '/var/spool/certM3/logs/api-error.log',
     out_file: '/var/spool/certM3/logs/api-out.log',
@@ -24,9 +27,9 @@ module.exports = {
   },
   {
     name: 'certm3-app',
-    script: 'src/mw/bin/certm3-app',
+    script: '../bin/certm3-app',
     args: `--config ${configPath}`,
-    cwd: '.',
+    cwd: path.resolve(__dirname, '..'),
     watch: false,
     error_file: '/var/spool/certM3/logs/certm3-app-error.log',
     out_file: '/var/spool/certM3/logs/certm3-app-out.log',
@@ -41,9 +44,9 @@ module.exports = {
   },
   {
     name: 'certm3-signer',
-    script: 'src/mw/bin/certm3-signer',
+    script: '../bin/certm3-signer',
     args: `--config ${configPath}`,
-    cwd: '.',
+    cwd: path.resolve(__dirname, '..'),
     watch: false,
     error_file: '/var/spool/certM3/logs/certm3-signer-error.log',
     out_file: '/var/spool/certM3/logs/certm3-signer-out.log',

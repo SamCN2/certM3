@@ -126,6 +126,9 @@ src/app.deprecated/semantic/dist/
 # Generated static files (built by build-spa.sh)
 static/
 
+# Package directory (recreated by build-package.sh)
+pkg/
+
 # Temporary and backup files
 docs.aux/
 *.bak
@@ -143,3 +146,5 @@ yarn.lock
 
 # Configuration files (environment-specific)
 # Note: src/mw/config.yaml and src/mw/config.yaml.example should be committed
+config/config.local.yaml
+ecosystem.config.js
