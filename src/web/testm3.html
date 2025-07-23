@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertM3 Certificate Test</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Container styles */
+        .testm3-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .testm3-header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .testm3-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .testm3-main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .testm3-main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card styles */
+        .certificate-card, .routing-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .certificate-header, .routing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* Status styles */
+        .certificate-status, .routing-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .certificate-status.valid, .routing-status.proceed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .certificate-status.invalid, .routing-status.block {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .certificate-status.expired {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .certificate-status.none {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .routing-status.redirect {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Detail sections */
+        .cert-detail-section, .cert-chain-section, .groups-section, .raw-cert-section {
+            margin-bottom: 25px;
+        }
+
+        .cert-detail-section h4, .cert-chain-section h4, .groups-section h4, .raw-cert-section h4 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .detail-item label {
+            font-weight: 600;
+            min-width: 120px;
+            color: #495057;
+        }
+
+        .detail-item .value {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .detail-item .value.expired {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+
+        /* Groups styles */
+        .groups-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .group-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .group-badge {
+            font-size: 1.1rem;
+        }
+
+        /* Chain styles */
+        .chain-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chain-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .chain-number {
+            background: #007bff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .chain-details {
+            flex: 1;
+        }
+
+        .chain-subject {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .chain-issuer {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        /* Raw certificate */
+        .raw-cert-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Routing styles */
+        .routing-details {
+            margin-bottom: 20px;
+        }
+
+        .routing-reason, .routing-message, .routing-destination {
+            margin-bottom: 10px;
+        }
+
+        .destination-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .destination-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .flow-step.completed {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .flow-step.current {
+            border-left-color: #007bff;
+            background: #d1ecf1;
+        }
+
+        .step-number {
+            background: #6c757d;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .flow-step.completed .step-number {
+            background: #28a745;
+        }
+
+        .flow-step.current .step-number {
+            background: #007bff;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .step-description {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        /* Access control */
+        .access-levels {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .access-level {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .access-level.granted {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .access-level.denied {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .access-resource {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .access-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .access-reason {
+            font-size: 0.8rem;
+            color: #6c757d;
+            max-width: 200px;
+        }
+
+        /* Actions section */
+        .actions-section {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-admin:hover {
+            background: #c82333;
+        }
+
+        /* No certificate styles */
+        .no-certificate {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .no-cert-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .no-certificate h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .no-certificate p {
+            color: #6c757d;
+            margin-bottom: 20px;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Error styles */
+        .error-container {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .error-container h2 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+
+        .error-container button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .error-container button:hover {
+            background: #0056b3;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .testm3-container {
+                padding: 10px;
+            }
+            
+            .testm3-header h1 {
+                font-size: 2rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="testm3-app">
+        <!-- Application will be rendered here -->
+    </div>
+
+    <!-- Certificate data from nginx headers -->
+    <div id="certificate-data" style="display: none;"
+         data-x-client-cn=""
+         data-x-client-verify=""
+         data-x-client-expiry=""
+         data-x-client-serial=""
+         data-x-certificate-state="">
+    </div>
+
+    <script type="module" src="testm3.js"></script>
+</body>
+</html> 
