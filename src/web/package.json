@@ -5,10 +5,12 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "npm run clean && npm run build:all && npm run copy-static",
-    "build:all": "npm run build:js && npm run build:simple",
+    "build:all": "npm run build:js && npm run build:simple && npm run build:testm3 && npm run build:renew",
     "build:js": "esbuild src/index.ts --bundle --outfile=dist/index.js --minify --sourcemap",
     "build:simple": "esbuild src/simple.ts --bundle --outfile=dist/simple.js --minify --sourcemap",
-    "copy-static": "node -e \"const config = require('./config.json'); require('fs').cpSync('dist', config.baseDir, { recursive: true }); require('fs').copyFileSync('test.html', config.baseDir + '/test.html'); require('fs').copyFileSync('index.html', config.baseDir + '/index.html'); require('fs').copyFileSync('simple.html', config.baseDir + '/simple.html'); require('fs').copyFileSync('vendor/forge.min.js', config.baseDir + '/forge.min.js');\"",
+    "build:testm3": "esbuild src/testm3/index.ts --bundle --outfile=dist/testm3.js --minify --sourcemap",
+    "build:renew": "esbuild src/renew/index.ts --bundle --outfile=dist/renew.js --minify --sourcemap",
+    "copy-static": "node -e \"const config = require('./config.json'); require('fs').cpSync('dist', config.baseDir, { recursive: true }); require('fs').copyFileSync('test.html', config.baseDir + '/test.html'); require('fs').copyFileSync('index.html', config.baseDir + '/index.html'); require('fs').copyFileSync('simple.html', config.baseDir + '/simple.html'); require('fs').copyFileSync('testm3.html', config.baseDir + '/testm3.html'); require('fs').copyFileSync('renew.html', config.baseDir + '/renew.html'); require('fs').copyFileSync('vendor/forge.min.js', config.baseDir + '/forge.min.js');\"",
     "dev": "esbuild src/index.ts --bundle --outfile=dist/index.js --sourcemap --watch"
   },
   "dependencies": {
