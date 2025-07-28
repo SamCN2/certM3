@@ -76,6 +76,7 @@ export class Group extends Entity {
   @property({
     type: 'date',
     required: true,
+    default: () => new Date(),
     postgresql: {
       columnName: 'created_at',
       dataType: 'timestamp with time zone',
@@ -96,6 +97,7 @@ export class Group extends Entity {
   @property({
     type: 'date',
     required: true,
+    default: () => new Date(),
     postgresql: {
       columnName: 'updated_at',
       dataType: 'timestamp with time zone',

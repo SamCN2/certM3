@@ -11,7 +11,7 @@ const defaultConfig = {
   name: 'postgres',
   connector: 'postgresql',
   host: '/var/run/postgresql',
-  user: 'certm3_user',
+  user: 'certm3',
   database: 'certm3',
   schema: 'public',
   ssl: false,

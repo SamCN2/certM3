@@ -299,11 +299,43 @@ class IndexApp {
         // CSR form
         const csrForm = document.getElementById('csrForm');
         if (csrForm) {
+            // Passphrase confirmation validation
+            const passphraseInput = document.getElementById('passphrase') as HTMLInputElement;
+            const confirmPassphraseInput = document.getElementById('confirmPassphrase') as HTMLInputElement;
+            
+            if (passphraseInput && confirmPassphraseInput) {
+                // Enable confirm field when passphrase is entered
+                passphraseInput.addEventListener('input', () => {
+                    const passphrase = passphraseInput.value.trim();
+                    confirmPassphraseInput.disabled = passphrase.length === 0;
+                    if (passphrase.length === 0) {
+                        confirmPassphraseInput.value = '';
+                    }
+                    
+                    // Update entropy meter
+                    this.updateEntropyMeter(passphrase);
+                });
+                
+                // Validate passphrase confirmation
+                confirmPassphraseInput.addEventListener('input', () => {
+                    const passphrase = passphraseInput.value.trim();
+                    const confirmPassphrase = confirmPassphraseInput.value.trim();
+                    
+                    if (confirmPassphrase.length > 0 && passphrase !== confirmPassphrase) {
+                        confirmPassphraseInput.setCustomValidity('Passphrases do not match');
+                    } else {
+                        confirmPassphraseInput.setCustomValidity('');
+                    }
+                });
+            }
+            
             const generateCertBtn = document.getElementById('generateCertBtn') as HTMLButtonElement;
             if (generateCertBtn) {
                 generateCertBtn.addEventListener('click', async () => {
                     const passphraseInput = document.getElementById('passphrase') as HTMLInputElement;
+                    const confirmPassphraseInput = document.getElementById('confirmPassphrase') as HTMLInputElement;
                     let passphrase = passphraseInput.value.trim();
+                    const confirmPassphrase = confirmPassphraseInput.value.trim();
                     const groupSelect = document.getElementById('groupSelect') as HTMLSelectElement;
                     const selectedGroups = Array.from(groupSelect.selectedOptions).map(option => option.value);
                     const generateFeedback = document.getElementById('generate-feedback');
@@ -311,6 +343,14 @@ class IndexApp {
                     if (!passphrase) {
                         if (generateFeedback) {
                             generateFeedback.textContent = 'Please enter a passphrase';
+                            generateFeedback.className = 'error';
+                        }
+                        return;
+                    }
+
+                    if (passphrase !== confirmPassphrase) {
+                        if (generateFeedback) {
+                            generateFeedback.textContent = 'Passphrases do not match';
                             generateFeedback.className = 'error';
                         }
                         return;
@@ -324,9 +364,11 @@ class IndexApp {
                         return;
                     }
 
+                    // Disable button and show loading state
                     generateCertBtn.disabled = true;
+                    generateCertBtn.textContent = 'Generating...';
                     if (generateFeedback) {
-                        generateFeedback.textContent = 'Generating certificate...';
+                        generateFeedback.textContent = 'Generating certificate... Please wait.';
                         generateFeedback.className = '';
                     }
 
@@ -339,9 +381,19 @@ class IndexApp {
                         csr.publicKey = keys.publicKey;
                         csr.setSubject([{ name: 'commonName', value: this.username }]);
                         
-                        // Note: Groups are handled by the signer, not in the CSR
-                        // The signer will add the group extension (OID 1.3.6.1.4.1.10049.2)
-                        // based on the groups parameter passed separately in the API call
+                        // Add custom username extension
+                        const usernameOid = '1.3.6.1.4.1.10049.1.2';
+                        const usernameExt = {
+                            id: usernameOid,
+                            critical: false,
+                            value: forge.util.encodeUtf8(this.username)
+                        };
+                        
+                        // Add extension
+                        csr.setAttributes([{
+                            name: 'extensionRequest',
+                            extensions: [usernameExt]
+                        }]);
                         
                         // Sign CSR
                         csr.sign(keys.privateKey);
@@ -439,6 +491,7 @@ class IndexApp {
                             generateFeedback.className = 'error';
                         }
                         generateCertBtn.disabled = false;
+                        generateCertBtn.textContent = 'Generate Certificate'; // Reset button text
                     }
                 });
             }
@@ -521,6 +574,13 @@ class IndexApp {
                 groupSelect.innerHTML = groups.map((group: string) => 
                     `<option value="${group}">${group}</option>`
                 ).join('');
+                
+                // Pre-select "users" and the username-based group (user's "self" group)
+                Array.from(groupSelect.options).forEach(option => {
+                    if (option.value === 'users' || option.value === this.username) {
+                        option.selected = true;
+                    }
+                });
             }
 
             // Show CSR view
@@ -574,11 +634,119 @@ class IndexApp {
                         // Only populate full details when first shown
                         const fullDetailsElement = document.getElementById('cert-full-details');
                         if (fullDetailsElement) {
-                            fullDetailsElement.textContent = JSON.stringify(cert, null, 2);
+                            fullDetailsElement.innerHTML = `<code>${JSON.stringify(cert, null, 2)}</code>`;
                         }
                     }
                 });
             }
+        }
+    }
+
+    private calculatePasswordStrength(password: string): { score: number; message: string; class: string } {
+        if (password.length === 0) {
+            return { score: 0, message: "Enter a passphrase", class: "" };
+        }
+
+        let score = 0;
+        let feedback = [];
+
+        // Length rewards (encouraging longer passwords)
+        if (password.length >= 8) {
+            score += 20;
+            feedback.push("Good length");
+        } else if (password.length >= 6) {
+            score += 10;
+            feedback.push("Getting longer");
+        }
+
+        // Character variety rewards (without requiring specific types)
+        const hasLower = /[a-z]/.test(password);
+        const hasUpper = /[A-Z]/.test(password);
+        const hasDigit = /\d/.test(password);
+        const hasSpecial = /[^a-zA-Z0-9]/.test(password);
+
+        let varietyBonus = 0;
+        if (hasLower) varietyBonus += 5;
+        if (hasUpper) varietyBonus += 5;
+        if (hasDigit) varietyBonus += 5;
+        if (hasSpecial) varietyBonus += 5;
+
+        score += varietyBonus;
+        if (varietyBonus >= 15) {
+            feedback.push("Great variety!");
+        } else if (varietyBonus >= 10) {
+            feedback.push("Good variety");
+        }
+
+        // Uniqueness reward (encouraging non-repeating patterns)
+        const uniqueChars = new Set(password).size;
+        const uniquenessRatio = uniqueChars / password.length;
+        if (uniquenessRatio > 0.7) {
+            score += 10;
+            feedback.push("Unique characters");
+        }
+
+        // Entropy-based reward (encouraging randomness without requiring it)
+        let entropy = 0;
+        const charSet = new Set(password);
+        if (charSet.size > 0) {
+            entropy = Math.log2(Math.pow(charSet.size, password.length));
+            if (entropy > 50) {
+                score += 15;
+                feedback.push("High entropy!");
+            } else if (entropy > 30) {
+                score += 10;
+                feedback.push("Good entropy");
+            }
+        }
+
+        // Final scoring and encouraging messages
+        if (score >= 60) {
+            return { 
+                score: Math.min(score, 100), 
+                message: "Excellent! " + feedback.join(", "), 
+                class: "strong" 
+            };
+        } else if (score >= 40) {
+            return { 
+                score: Math.min(score, 100), 
+                message: "Good! " + feedback.join(", "), 
+                class: "medium" 
+            };
+        } else if (score >= 20) {
+            return { 
+                score: Math.min(score, 100), 
+                message: "Getting better! " + feedback.join(", "), 
+                class: "weak" 
+            };
+        } else {
+            return { 
+                score: Math.min(score, 100), 
+                message: "Keep going! " + feedback.join(", "), 
+                class: "weak" 
+            };
+        }
+    }
+
+    private updateEntropyMeter(password: string): void {
+        const entropyBar = document.querySelector('.entropy-bar') as HTMLElement;
+        const entropyValue = document.getElementById('entropyValue');
+        
+        if (!entropyBar || !entropyValue) return;
+        
+        const strength = this.calculatePasswordStrength(password);
+        
+        // Update the bar width and color
+        entropyBar.style.width = `${strength.score}%`;
+        entropyBar.className = `entropy-bar ${strength.class}`;
+        
+        // Update the text
+        entropyValue.textContent = strength.score.toString();
+        
+        // Update the entropy text with encouraging message
+        const entropyText = document.querySelector('.entropy-text');
+        if (entropyText) {
+            entropyText.textContent = strength.message;
         }
     }
 }

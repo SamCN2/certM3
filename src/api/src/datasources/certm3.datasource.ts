@@ -12,7 +12,7 @@ const defaultConfig = {
   connector: 'postgresql',
   url: '',
   host: '/var/run/postgresql',
-  user: 'certm3_user',
+  user: 'certm3',
   password: '',
   database: 'certm3',
 };

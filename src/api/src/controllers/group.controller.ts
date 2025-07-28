@@ -2,14 +2,18 @@
  * Copyright 2025 ogt11.com, llc
  */
 
-import {post, param, requestBody, get, patch, del} from '@loopback/rest';
-import {Group, Users} from '../models';
-import {GroupRepository, UserGroupRepository, UserRepository} from '../repositories';
-import {HttpErrors} from '@loopback/rest';
 import {repository} from '@loopback/repository';
-import * as fs from 'fs';
+import {post, param, get, put, patch, del, requestBody, response, HttpErrors} from '@loopback/rest';
+import {Group} from '../models/group.model';
+import {GroupRepository} from '../repositories/group.repository';
+import {UserGroupRepository} from '../repositories/user-group.repository';
+import {UserRepository} from '../repositories/user.repository';
+import {Users} from '../models/user.model';
+import {Logger} from '../logger';
 
 export class GroupController {
+  private logger = Logger.getInstance();
+
   constructor(
     @repository(GroupRepository)
     private groupRepository: GroupRepository,
@@ -19,13 +23,10 @@ export class GroupController {
     private userRepository: UserRepository,
   ) {}
 
-  @post('/groups', {
-    responses: {
-      '200': {
-        description: 'Group model instance',
-        content: {'application/json': {schema: {'x-ts-type': Group}}},
-      },
-    },
+  @post('/groups')
+  @response(200, {
+    description: 'Group model instance',
+    content: {'application/json': {schema: {'x-ts-type': Group}}},
   })
   async create(
     @requestBody({
@@ -45,61 +46,62 @@ export class GroupController {
     })
     group: Omit<Group, 'id'>,
   ): Promise<Group> {
-    // Check if group already exists
-    const existingGroup = await this.groupRepository.findOne({
-      where: {name: group.name}
-    });
-    if (existingGroup) {
-      throw new HttpErrors.Conflict('Group with this name already exists');
+    this.logger.info('Creating new group', { group_name: group.name, display_name: group.displayName });
+    
+    try {
+      const result = await this.groupRepository.create(group);
+      this.logger.info('Group created successfully', { group_name: group.name, group_id: result.name });
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to create group', { 
+        group_name: group.name, 
+        error: error.message 
+      });
+      throw error;
     }
-
-    // Special handling for 'users' group
-    if (group.name === 'users') {
-      throw new HttpErrors.Conflict('Cannot create the users group - it is a protected system group');
-    }
-
-    return this.groupRepository.create({
-      ...group,
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
   }
 
-  @get('/groups', {
-    responses: {
-      '200': {
-        description: 'Array of Group model instances',
-        content: {'application/json': {schema: {'x-ts-type': Group}}},
+  @get('/groups')
+  @response(200, {
+    description: 'Array of Group model instances',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: {'x-ts-type': Group},
+        },
       },
     },
   })
   async find(): Promise<Group[]> {
+    this.logger.debug('Fetching all groups');
     return this.groupRepository.find();
   }
 
-  @get('/groups/{name}', {
-    responses: {
-      '200': {
-        description: 'Group model instance',
-        content: {'application/json': {schema: {'x-ts-type': Group}}},
+  @get('/groups/{name}')
+  @response(200, {
+    description: 'Group model instance',
+    content: {
+      'application/json': {
+        schema: {'x-ts-type': Group},
       },
     },
   })
   async findById(@param.path.string('name') name: string): Promise<Group> {
+    this.logger.debug('Fetching group by name', { group_name: name });
+    
     const group = await this.groupRepository.findById(name);
     if (!group) {
-      throw new HttpErrors.NotFound('Group not found');
+      this.logger.warn('Group not found', { group_name: name });
+      throw new HttpErrors.NotFound(`Group ${name} not found`);
     }
+    
     return group;
   }
 
-  @patch('/groups/{name}', {
-    responses: {
-      '204': {
-        description: 'Group PATCH success',
-      },
-    },
+  @put('/groups/{name}')
+  @response(204, {
+    description: 'Group PUT success',
   })
   async updateById(
     @param.path.string('name') name: string,
@@ -118,95 +120,119 @@ export class GroupController {
     })
     group: Partial<Group>,
   ): Promise<void> {
-    const existingGroup = await this.groupRepository.findById(name);
-    if (!existingGroup) {
-      throw new HttpErrors.NotFound('Group not found');
+    this.logger.info('Updating group', { group_name: name, updates: group });
+    
+    try {
+      await this.groupRepository.updateById(name, group);
+      this.logger.info('Group updated successfully', { group_name: name });
+    } catch (error) {
+      this.logger.error('Failed to update group', { 
+        group_name: name, 
+        error: error.message 
+      });
+      throw error;
     }
-
-    if (existingGroup.name === 'users') {
-      throw new HttpErrors.Forbidden('Cannot modify the users group');
-    }
-
-    await this.groupRepository.updateById(name, {
-      ...group,
-      updatedAt: new Date(),
-    });
   }
 
-  @post('/groups/{name}/deactivate', {
-    responses: {
-      '204': {
-        description: 'Group deactivation success',
+  @patch('/groups/{name}')
+  @response(204, {
+    description: 'Group PATCH success',
+  })
+  async updateByIdPatch(
+    @param.path.string('name') name: string,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              displayName: {type: 'string'},
+              description: {type: 'string'},
+            },
+          },
+        },
       },
-    },
+    })
+    group: Partial<Group>,
+  ): Promise<void> {
+    this.logger.info('Patching group', { group_name: name, updates: group });
+    
+    try {
+      await this.groupRepository.updateById(name, group);
+      this.logger.info('Group patched successfully', { group_name: name });
+    } catch (error) {
+      this.logger.error('Failed to patch group', { 
+        group_name: name, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  @del('/groups/{name}')
+  @response(204, {
+    description: 'Group DELETE success',
   })
   async deactivate(@param.path.string('name') name: string): Promise<void> {
-    // Check if group exists
-    const group = await this.groupRepository.findById(name);
-    if (!group) {
-      throw new HttpErrors.NotFound('Group not found');
+    this.logger.warn('Deactivating group', { group_name: name });
+    
+    try {
+      await this.groupRepository.updateById(name, {status: 'inactive'});
+      this.logger.info('Group deactivated successfully', { group_name: name });
+    } catch (error) {
+      this.logger.error('Failed to deactivate group', { 
+        group_name: name, 
+        error: error.message 
+      });
+      throw error;
     }
-
-    // Check if it's the users group
-    if (group.name === 'users') {
-      throw new HttpErrors.Forbidden('Cannot deactivate the users group');
-    }
-
-    // Update the group status
-    await this.groupRepository.updateById(name, {
-      status: 'inactive',
-      updatedAt: new Date(),
-      updatedBy: 'system'
-    });
   }
 
-  @get('/groups/{name}/members', {
-    responses: {
-      '200': {
-        description: 'Array of User model instances',
-        content: {'application/json': {schema: {'x-ts-type': Users}}},
+  @get('/groups/{name}/members')
+  @response(200, {
+    description: 'Array of User model instances',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: {'x-ts-type': Users},
+        },
       },
     },
   })
   async getMembers(
     @param.path.string('name') name: string,
   ): Promise<Users[]> {
-    const group = await this.groupRepository.findOne({
-      where: {name: name}
-    });
-    if (!group) {
-      throw new HttpErrors.NotFound('Group not found');
-    }
-
+    this.logger.debug('Fetching group members', { group_name: name });
+    
     try {
-      // First get the user IDs from user_groups
-      const userGroups = await this.userGroupRepository.find({
+      const memberships = await this.userGroupRepository.find({
         where: {groupName: name},
-        fields: ['userId']
       });
 
-      // Then get the users
-      const userIds = userGroups.map(ug => ug.userId);
+      const userIds = memberships.map(m => m.userId);
       const users = await this.userRepository.find({
-        where: {
-          id: {inq: userIds}
-        },
-        fields: ['id', 'username', 'email', 'displayName', 'status']
+        where: {id: {inq: userIds}},
       });
 
+      this.logger.debug('Group members retrieved', { 
+        group_name: name, 
+        member_count: users.length 
+      });
+      
       return users;
     } catch (error) {
-      console.error('Error fetching members:', error);
-      throw new HttpErrors.InternalServerError('Error fetching members');
+      this.logger.error('Failed to get group members', { 
+        group_name: name, 
+        error: error.message 
+      });
+      throw error;
     }
   }
 
-  @post('/groups/{name}/members', {
-    responses: {
-      '204': {
-        description: 'Add members to group success',
-      },
-    },
+  @post('/groups/{name}/members')
+  @response(204, {
+    description: 'Add members to group success',
   })
   async addMembers(
     @param.path.string('name') name: string,
@@ -232,21 +258,28 @@ export class GroupController {
     })
     data: {userIds: string[], createdAt?: string, updatedAt?: string, createdBy?: string, updatedBy?: string},
   ): Promise<void> {
-    fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Attempting to add users to group: ${name}, userIds: ${JSON.stringify(data.userIds)}\n`);
+    this.logger.info('Adding members to group', { 
+      group_name: name, 
+      user_count: data.userIds.length,
+      user_ids: data.userIds 
+    });
+    
     try {
       const group = await this.groupRepository.findById(name);
-      fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Found group: ${JSON.stringify(group)}\n`);
+      this.logger.debug('Group found for member addition', { group_name: name });
+      
       if (!group) {
-        fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Group not found: ${name}\n`);
+        this.logger.warn('Group not found for member addition', { group_name: name });
         throw new HttpErrors.NotFound(`Group ${name} not found`);
       }
 
       for (const userId of data.userIds) {
         // Check if user exists
         const user = await this.userRepository.findById(userId);
-        fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Found user: ${JSON.stringify(user)}\n`);
+        this.logger.debug('User found for group membership', { user_id: userId, group_name: name });
+        
         if (!user) {
-          fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] User not found: ${userId}\n`);
+          this.logger.warn('User not found for group membership', { user_id: userId, group_name: name });
           throw new HttpErrors.NotFound(`User ${userId} not found`);
         }
 
@@ -257,16 +290,16 @@ export class GroupController {
             groupName: name,
           },
         });
-        fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Existing membership: ${JSON.stringify(existingMembership)}\n`);
+        this.logger.debug('Checking existing membership', { user_id: userId, group_name: name });
 
         if (existingMembership) {
-          fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] User is already a member: ${userId} in group ${name}\n`);
+          this.logger.info('User already a member, skipping', { user_id: userId, group_name: name });
           continue; // Skip this user and continue with the next one
         }
 
         try {
           // Add new membership
-          const newMembership = await this.userGroupRepository.create({
+          await this.userGroupRepository.create({
             userId: userId,
             groupName: name,
             createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
@@ -274,14 +307,29 @@ export class GroupController {
             createdBy: data.createdBy || 'system',
             updatedBy: data.updatedBy || 'system',
           });
-          fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Created new membership: ${JSON.stringify(newMembership)}\n`);
+          this.logger.info('New membership created', { 
+            user_id: userId, 
+            group_name: name
+          });
         } catch (error) {
-          fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Error creating membership: ${error && error.stack ? error.stack : error}\n`);
+          this.logger.error('Error creating membership', { 
+            user_id: userId, 
+            group_name: name, 
+            error: error.message 
+          });
           throw error;
         }
       }
+      
+      this.logger.info('All members added to group successfully', { 
+        group_name: name, 
+        user_count: data.userIds.length 
+      });
     } catch (error) {
-      fs.appendFileSync('/var/spool/certM3/stupid.log', `[${new Date().toISOString()}] [addMembers] Outer error: ${error && error.stack ? error.stack : error}\n`);
+      this.logger.error('Failed to add members to group', { 
+        group_name: name, 
+        error: error.message 
+      });
       throw error;
     }
   }
@@ -314,6 +362,10 @@ export class GroupController {
     _data: {userIds: string[]},
   ): Promise<void> {
     // Prevent removing users from any group to maintain history
+    this.logger.warn('Attempt to remove members from group blocked', { 
+      group_name: _name, 
+      reason: 'Group membership history must be preserved' 
+    });
     throw new HttpErrors.Forbidden('Cannot remove users from groups - group membership history must be preserved');
   }
 } 

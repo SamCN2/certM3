@@ -18,17 +18,17 @@ export interface ApiConfig {
   };
 }
 
-// Try to get config from config loader, fail if not found
-function getConfig(): {development: ApiConfig, production: ApiConfig} {
+// Single config source - no environment distinction
+function getConfig(): ApiConfig {
   const configLoader = ConfigLoader.getInstance();
   const apiConfig = configLoader.getApiConfig();
   const dbConfig = configLoader.getDatabaseConfig();
   
-  const development: ApiConfig = {
+  return {
     api: {
       prefix: apiConfig.prefix,
       port: apiConfig.port,
-      host: apiConfig.host,
+      host: apiConfig.host, // Use config value directly
     },
     database: {
       host: dbConfig.host,
@@ -37,28 +37,6 @@ function getConfig(): {development: ApiConfig, production: ApiConfig} {
       password: dbConfig.password,
     },
   };
-
-  const production: ApiConfig = {
-    api: {
-      prefix: apiConfig.prefix,
-      port: apiConfig.port,
-      host: '0.0.0.0', // Production should bind to all interfaces
-    },
-    database: {
-      host: dbConfig.host,
-      database: dbConfig.database,
-      username: dbConfig.user,
-      password: dbConfig.password,
-    },
-  };
-
-  return { development, production };
 }
 
-const configs: {[key: string]: ApiConfig} = getConfig();
-
-// Get the environment from NODE_ENV, defaulting to development
-const env = process.env.NODE_ENV || 'development';
-
-// Export the configuration for the current environment
-export const config = configs[env]; 
+export const config = getConfig(); 

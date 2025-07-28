@@ -9,7 +9,7 @@ echo "Building CertM3 package..."
 
 # Clean and recreate package directory
 rm -rf pkg
-mkdir -p pkg/{bin,etc,static,var/spool/certM3/logs,api}
+mkdir -p pkg/{bin,etc,static,scripts,var/spool/certM3/logs,api}
 
 # Build Go binaries
 echo "Building Go binaries..."
@@ -28,6 +28,8 @@ if npm install --legacy-peer-deps; then
         # Copy only runtime-necessary files
         cp -r dist ../../pkg/api/
         cp package.json ../../pkg/api/
+        # Copy production dependencies
+        cp -r node_modules ../../pkg/api/
         echo "API runtime files copied"
     else
         echo "API build failed"
@@ -45,11 +47,17 @@ if [ -d "static" ]; then
     cp -r static/* pkg/static/
 fi
 
-# Copy configuration files
-echo "Copying configuration files..."
-cp config/config.default.yaml pkg/etc/config.yaml
+# Copy scripts
+echo "Copying scripts"
+cp scripts/*  pkg/scripts/
+chmod +x pkg/scripts/*
+
+# Copy and sanitize configuration files
+echo "Copying and sanitizing configuration files..."
 cp config/config.default.yaml pkg/etc/config.default.yaml
-cp README.md pkg/
+
+# Sanitize config.yaml - replace local username with production user
+sed -i 's/user: "samcn2"/user: "certm3"/g' pkg/etc/config.default.yaml
 
 # Copy CA management scripts
 echo "Copying CA management scripts..."
@@ -58,74 +66,26 @@ cp -r CA-mgmt pkg/
 # Copy database setup scripts
 echo "Copying database setup scripts..."
 cp scripts/create_certm3_schema.sql pkg/
+
+# Sanitize SQL schema - replace local username with production user
+sed -i 's/OWNER TO samcn2/OWNER TO certm3/g' pkg/create_certm3_schema.sql
+sed -i 's/Owner: samcn2/Owner: certm3/g' pkg/create_certm3_schema.sql
+
 cp scripts/setup-database.sh pkg/
 
-# Create PM2 config for package
-echo "Creating PM2 config..."
-cat > pkg/etc/certm3.pm2.config.js << 'EOF'
-const path = require('path');
+# Copy nginx configuration files
+echo "Copying nginx configuration files..."
+mkdir -p pkg/nginx
+for ngfile in $( cd nginx ; ls )
+do
+  cp  nginx/${ngfile} pkg/nginx/${ngfile}.default
+  # Sanitize nginx configs - replace absolute paths with placeholders
+  sed -i 's|/home/samcn2/src/certM3|{{PROJECT_ROOT}}|g' pkg/nginx/${ngfile}.default
+done
 
-module.exports = {
-  apps: [
-    // API - use the compiled JavaScript
-    {
-      name: 'certm3-api',
-      script: 'dist/index.js',
-      args: '--config ../etc/config.yaml',
-      cwd: 'api',
-      watch: false,
-      error_file: '../var/spool/certM3/logs/api-error.log',
-      out_file: '../var/spool/certM3/logs/api-out.log',
-      log_file: '../var/spool/certM3/logs/api-combined.log',
-      time: true,
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      max_memory_restart: '1G',
-      max_restarts: 10,
-      min_uptime: '10s',
-      restart_delay: 5000,
-      env: { PORT: 3000 }
-    },
-    // Middleware app
-    {
-      name: 'certm3-app',
-      script: 'bin/certm3-app',
-      args: '--config etc/config.yaml',
-      cwd: '.',
-      watch: false,
-      error_file: 'var/spool/certM3/logs/certm3-app-error.log',
-      out_file: 'var/spool/certM3/logs/certm3-app-out.log',
-      log_file: 'var/spool/certM3/logs/certm3-app-combined.log',
-      time: true,
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      max_memory_restart: '1G',
-      max_restarts: 10,
-      min_uptime: '10s',
-      restart_delay: 5000,
-      env: { PORT: 8080 }
-    },
-    // Signer
-    {
-      name: 'certm3-signer',
-      script: 'bin/certm3-signer',
-      args: '--config etc/config.yaml',
-      cwd: '.',
-      watch: false,
-      error_file: 'var/spool/certM3/logs/certm3-signer-error.log',
-      out_file: 'var/spool/certM3/logs/certm3-signer-out.log',
-      log_file: 'var/spool/certM3/logs/certm3-signer-combined.log',
-      time: true,
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      max_memory_restart: '1G',
-      max_restarts: 10,
-      min_uptime: '10s',
-      restart_delay: 5000
-    }
-  ]
-};
-EOF
+# Copy PM2 configuration
+echo "Copying PM2 configuration..."
+cp scripts/certm3.pm2.config.js pkg/etc/certm3.pm2.config.js.default
 
 # Create setup script
 echo "Creating setup script..."
@@ -200,6 +160,68 @@ echo "4. Configure nginx (see etc/nginx.certm3-skeleton.conf)"
 EOF
 
 chmod +x pkg/setup.sh
+
+# Create sanitized nginx path configuration script
+echo "Creating nginx path configuration script..."
+cat > pkg/scripts/configure-nginx-paths.sh << 'EOF'
+#!/bin/bash
+# Copyright 2025 ogt11.com, llc
+# Configure nginx paths for CertM3 deployment
+
+set -e
+
+# Default paths - these will be replaced with actual paths
+DEFAULT_PROJECT_ROOT="{{PROJECT_ROOT}}"
+DEFAULT_CA_CERT_PATH="{{PROJECT_ROOT}}/CA/certs/ca-cert.pem"
+
+echo "CertM3 Nginx Path Configuration"
+echo "==============================="
+
+# Get current directory as project root
+PROJECT_ROOT=$(pwd)
+echo "Project root: $PROJECT_ROOT"
+
+# Determine CA certificate path
+if [ -f "CA/certs/ca-cert.pem" ]; then
+    CA_CERT_PATH="$PROJECT_ROOT/CA/certs/ca-cert.pem"
+elif [ -f "../CA/certs/ca-cert.pem" ]; then
+    CA_CERT_PATH="$(cd .. && pwd)/CA/certs/ca-cert.pem"
+else
+    echo "Warning: CA certificate not found in expected locations"
+    echo "You may need to manually configure the ssl_client_certificate path"
+    CA_CERT_PATH="$PROJECT_ROOT/CA/certs/ca-cert.pem"
+fi
+
+echo "CA certificate path: $CA_CERT_PATH"
+
+# Configure nginx config files
+echo ""
+echo "Configuring nginx configuration files..."
+
+for config_file in nginx/*.default; do
+    if [ -f "$config_file" ]; then
+        output_file="${config_file%.default}"
+        echo "Processing: $config_file -> $output_file"
+        
+        # Replace placeholders with actual paths
+        sed -e "s|{{PROJECT_ROOT}}|$PROJECT_ROOT|g" \
+            -e "s|\"{{PROJECT_ROOT}}/CA/certs/ca-cert.pem\"|\"$CA_CERT_PATH\"|g" \
+            "$config_file" > "$output_file"
+        
+        echo "  ✓ Created: $output_file"
+    fi
+done
+
+echo ""
+echo "Nginx configuration complete!"
+echo ""
+echo "Next steps:"
+echo "1. Copy the generated nginx configs to your nginx sites-available/"
+echo "2. Include the nginx maps file in your main nginx.conf http block"
+echo "3. Reload nginx: sudo systemctl reload nginx"
+EOF
+
+chmod +x pkg/scripts/configure-nginx-paths.sh
 
 # Create package info with dependency requirements
 echo "Creating package info..."
