@@ -139,7 +139,8 @@ download_file "CA/create-cs.js" "$TEMP_DIR/CA/create-cs.js"
 download_file "CA/ca.cnf" "$TEMP_DIR/CA/ca.cnf"
 
 # PM2 configuration
-download_file "certm3.pm2.config.js" "$TEMP_DIR/certm3.pm2.config.js"
+download_file "scripts/certm3.pm2.config.js" "$TEMP_DIR/scripts/certm3.pm2.config.js"
+download_file "src/api/ecosystem.config.js" "$TEMP_DIR/src/api/ecosystem.config.js"
 
 # Database setup
 download_file "scripts/create_certm3_schema.sql" "$TEMP_DIR/scripts/create_certm3_schema.sql"
