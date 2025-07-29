@@ -22,10 +22,49 @@ echo "Version: $VERSION"
 echo "Release Notes: $RELEASE_NOTES"
 echo ""
 
-# Check if pkg directory exists
+# Check if we're on the right git version
+CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+if [ "$CURRENT_TAG" != "$VERSION" ]; then
+    echo "⚠️  Warning: Current git tag ($CURRENT_TAG) doesn't match version ($VERSION)"
+    echo "   This will upload whatever is currently built in pkg/"
+    echo "   Consider: git checkout $VERSION && ./scripts/build-package.sh"
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Aborted"
+        exit 1
+    fi
+fi
+
+# Check for uncommitted changes
+if [ -n "$(git status --porcelain)" ]; then
+    echo "⚠️  Warning: You have uncommitted changes"
+    echo "   This will upload a package built from dirty state"
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Aborted"
+        exit 1
+    fi
+fi
+
+# Check if pkg directory exists and is recent
 if [ ! -d "pkg" ]; then
     echo "❌ pkg directory not found. Run ./scripts/build-package.sh first."
     exit 1
+fi
+
+# Check if pkg is fresh (built within last 10 minutes)
+PKG_AGE=$(find pkg -type f -mmin +10 2>/dev/null | wc -l)
+if [ "$PKG_AGE" -gt 0 ]; then
+    echo "⚠️  Warning: pkg/ directory may be stale (some files older than 10 minutes)"
+    echo "   Consider running: ./scripts/build-package.sh"
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "❌ Aborted"
+        exit 1
+    fi
 fi
 
 # Create release archive
