@@ -156,6 +156,7 @@ download_file "scripts/certm3.pm2.config.js" "$TEMP_DIR/scripts/certm3.pm2.confi
 
 # Database setup
 download_file "scripts/create_certm3_schema.sql" "$TEMP_DIR/scripts/create_certm3_schema.sql"
+download_file "scripts/setup-database.sh" "$TEMP_DIR/scripts/setup-database.sh"
 
 echo "✅ All files downloaded successfully!"
 
