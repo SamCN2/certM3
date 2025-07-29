@@ -168,6 +168,18 @@ chmod +x "$TEMP_DIR/CA/"*.sh
 echo "🔨 Building package..."
 cd "$TEMP_DIR"
 
+# Install API dependencies
+echo "📦 Installing API dependencies..."
+cd src/api
+npm install --include=dev
+cd ../..
+
+# Install Web frontend dependencies
+echo "📦 Installing Web frontend dependencies..."
+cd src/web
+npm install --include=dev
+cd ../..
+
 # Run the build script
 if ./scripts/build-package.sh; then
     echo "✅ Package built successfully!"
