@@ -139,6 +139,18 @@ download_file "CA/create-ca.js" "$TEMP_DIR/CA/create-ca.js"
 download_file "CA/create-cs.js" "$TEMP_DIR/CA/create-cs.js"
 download_file "CA/ca.cnf" "$TEMP_DIR/CA/ca.cnf"
 
+# CA management directory
+download_file "CA-mgmt/.gitignore" "$TEMP_DIR/CA-mgmt/.gitignore"
+download_file "CA-mgmt/INTEGRATION.md" "$TEMP_DIR/CA-mgmt/INTEGRATION.md"
+download_file "CA-mgmt/README.md" "$TEMP_DIR/CA-mgmt/README.md"
+download_file "CA-mgmt/config/openssl-intermediate.conf" "$TEMP_DIR/CA-mgmt/config/openssl-intermediate.conf"
+download_file "CA-mgmt/config/openssl-root.conf" "$TEMP_DIR/CA-mgmt/config/openssl-root.conf"
+download_file "CA-mgmt/intermediate/create-api-ca.sh" "$TEMP_DIR/CA-mgmt/intermediate/create-api-ca.sh"
+download_file "CA-mgmt/intermediate/create-db-ca.sh" "$TEMP_DIR/CA-mgmt/intermediate/create-db-ca.sh"
+download_file "CA-mgmt/intermediate/create-user-ca.sh" "$TEMP_DIR/CA-mgmt/intermediate/create-user-ca.sh"
+download_file "CA-mgmt/intermediate/renew-ca.sh" "$TEMP_DIR/CA-mgmt/intermediate/renew-ca.sh"
+download_file "CA-mgmt/monitoring/README.md" "$TEMP_DIR/CA-mgmt/monitoring/README.md"
+
 # PM2 configuration
 download_file "scripts/certm3.pm2.config.js" "$TEMP_DIR/scripts/certm3.pm2.config.js"
 
