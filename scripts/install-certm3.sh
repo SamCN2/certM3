@@ -3,15 +3,35 @@
 # CertM3 Installer
 # Downloads and installs the pre-built CertM3 package from GitHub
 # Usage: ./install-certm3.sh [version] [install_dir]
+# If no version specified, uses the latest release
 
 set -e
 
 REPO_URL="https://github.com/SamCN2/certM3"
-VERSION=${1:-"v1.9.2"}
 INSTALL_DIR=${2:-"/opt/certm3"}
 
-echo "🔧 CertM3 Installer"
-echo "Version: $VERSION"
+# Function to get latest version from GitHub
+get_latest_version() {
+    local latest_tag
+    latest_tag=$(curl -s "https://api.github.com/repos/SamCN2/certM3/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+    if [ -z "$latest_tag" ]; then
+        echo "❌ Could not determine latest version from GitHub"
+        exit 1
+    fi
+    echo "$latest_tag"
+}
+
+# Determine version to install
+if [ -n "$1" ]; then
+    VERSION="$1"
+    echo "🔧 CertM3 Installer"
+    echo "Version: $VERSION (specified)"
+else
+    VERSION=$(get_latest_version)
+    echo "🔧 CertM3 Installer"
+    echo "Version: $VERSION (latest)"
+fi
+
 echo "Install Directory: $INSTALL_DIR"
 echo ""
 

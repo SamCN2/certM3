@@ -2,11 +2,19 @@
 
 # Upload CertM3 Package to GitHub
 # Creates a release and uploads the pkg directory as a release asset
-# Usage: ./upload-package-to-github.sh [version] [release_notes]
+# Usage: ./upload-package-to-github.sh <version> [release_notes]
+# Version is required (e.g., v1.9.3)
 
 set -e
 
-VERSION=${1:-"v1.9.2"}
+if [ -z "$1" ]; then
+    echo "❌ Error: Version is required"
+    echo "Usage: $0 <version> [release_notes]"
+    echo "Example: $0 v1.9.3 'Fixed winston type issues'"
+    exit 1
+fi
+
+VERSION="$1"
 RELEASE_NOTES=${2:-"CertM3 package release $VERSION"}
 
 echo "📤 CertM3 Package Uploader"
