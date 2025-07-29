@@ -171,13 +171,13 @@ cd "$TEMP_DIR"
 # Install API dependencies
 echo "📦 Installing API dependencies..."
 cd src/api
-npm install --include=dev
+npm install --include=dev --legacy-peer-deps
 cd ../..
 
 # Install Web frontend dependencies
 echo "📦 Installing Web frontend dependencies..."
 cd src/web
-npm install --include=dev
+npm install --include=dev --legacy-peer-deps
 cd ../..
 
 # Run the build script
