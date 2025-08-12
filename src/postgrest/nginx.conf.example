@@ -1,0 +1,70 @@
+# This is an example Nginx configuration for running PostgREST with mTLS.
+# In a real deployment, you would replace the placeholder paths and settings
+# with your actual certificate paths and server names.
+
+# Upstream block for the PostgREST server
+upstream postgrest {
+    # PostgREST can be run on a Unix socket or a TCP port.
+    # server unix:/tmp/postgrest.sock;
+    server 127.0.0.1:3000;
+}
+
+server {
+    listen 443 ssl;
+    server_name api.example.com; # Replace with your domain
+
+    # SSL Configuration
+    ssl_certificate /etc/nginx/certs/api.example.com.crt; # Server certificate
+    ssl_certificate_key /etc/nginx/certs/api.example.com.key; # Server private key
+
+    # mTLS Client Certificate Authentication
+    ssl_client_certificate /etc/nginx/certs/ca.crt; # CA to verify client certs against
+    ssl_verify_client on; # Require a client certificate
+    ssl_verify_depth 2;
+
+    location / {
+        # --- JWT Generation ---
+        # In a real setup, this is where you would generate the JWT.
+        # This typically involves a small auth service or an embedded script (like Lua).
+        #
+        # 1. The service would receive the client certificate details, for example,
+        #    the Common Name ($ssl_client_s_dn_cn) and fingerprint ($ssl_client_fingerprint).
+        # 2. It would look up the user in the database or an identity provider to get their role.
+        # 3. It would then sign a new JWT with a short expiry and the user's role.
+        #
+        # For this example, we will assume an auth service runs at /_generate_jwt
+        # and we use an `auth_request` to get the token.
+
+        # Example using an internal auth request to generate a JWT
+        # auth_request /_generate_jwt;
+        # auth_set $auth_token $upstream_http_x_auth_token;
+        # proxy_set_header Authorization "Bearer $auth_token";
+
+        # For demonstration purposes, we will just proxy the request directly.
+        # In a real implementation, the Authorization header MUST be set with a valid JWT.
+        # The original Authorization header from the client should be ignored.
+        proxy_set_header Authorization ""; # Clear any incoming auth header
+
+        # Proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Pass the request to the PostgREST upstream
+        proxy_pass http://postgrest;
+    }
+
+    # Example internal location for JWT generation
+    # location = /_generate_jwt {
+    #     internal;
+    #     # This would proxy to a small service that takes the client cert details
+    #     # (passed as headers) and returns a JWT.
+    #     proxy_pass http://jwt-auth-service;
+    #     proxy_pass_request_body off;
+    #     proxy_set_header Content-Length "";
+    #     proxy_set_header X-Original-URI $request_uri;
+    #     proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+    #     proxy_set_header X-SSL-Client-Fingerprint $ssl_client_fingerprint;
+    # }
+}
